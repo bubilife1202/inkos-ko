@@ -7,7 +7,7 @@ export { type GenreProfile, type ParsedGenreProfile, GenreProfileSchema, parseGe
 export { type BookRules, type ParsedBookRules, BookRulesSchema, parseBookRules } from "./models/book-rules.js";
 
 // LLM
-export { createLLMClient, chatCompletion, type LLMResponse, type LLMMessage } from "./llm/provider.js";
+export { createLLMClient, chatCompletion, chatWithTools, type LLMClient, type LLMResponse, type LLMMessage, type ToolDefinition, type ToolCall, type AgentMessage, type ChatWithToolsResult } from "./llm/provider.js";
 
 // Agents
 export { BaseAgent, type AgentContext } from "./agents/base.js";
@@ -23,7 +23,7 @@ export { buildWriterSystemPrompt } from "./agents/writer-prompts.js";
 // Pipeline
 export { PipelineRunner, type PipelineConfig, type ChapterPipelineResult, type DraftResult, type ReviseResult, type TruthFiles, type BookStatusInfo } from "./pipeline/runner.js";
 export { Scheduler, type SchedulerConfig } from "./pipeline/scheduler.js";
-export { runAgentLoop, AGENT_TOOLS, type AgentLoopOptions } from "./pipeline/agent.js";
+export { runAgentLoop, AGENT_TOOLS as AGENT_TOOLS, type AgentLoopOptions } from "./pipeline/agent.js";
 
 // State
 export { StateManager } from "./state/manager.js";

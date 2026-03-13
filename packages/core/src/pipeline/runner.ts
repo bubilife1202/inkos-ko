@@ -1,4 +1,4 @@
-import type OpenAI from "openai";
+import type { LLMClient } from "../llm/provider.js";
 import type { BookConfig } from "../models/book.js";
 import type { ChapterMeta } from "../models/chapter.js";
 import type { NotifyChannel } from "../models/project.js";
@@ -19,7 +19,7 @@ import { readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 export interface PipelineConfig {
-  readonly client: OpenAI;
+  readonly client: LLMClient;
   readonly model: string;
   readonly projectRoot: string;
   readonly notifyChannels?: ReadonlyArray<NotifyChannel>;

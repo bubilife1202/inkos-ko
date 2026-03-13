@@ -1,9 +1,8 @@
-import type OpenAI from "openai";
-import type { LLMMessage, LLMResponse } from "../llm/provider.js";
+import type { LLMClient, LLMMessage, LLMResponse } from "../llm/provider.js";
 import { chatCompletion } from "../llm/provider.js";
 
 export interface AgentContext {
-  readonly client: OpenAI;
+  readonly client: LLMClient;
   readonly model: string;
   readonly projectRoot: string;
   readonly bookId?: string;

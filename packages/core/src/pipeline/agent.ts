@@ -1,136 +1,109 @@
-import type OpenAI from "openai";
+import { chatWithTools, type AgentMessage, type ToolDefinition } from "../llm/provider.js";
 import { PipelineRunner, type PipelineConfig } from "./runner.js";
 import type { Platform, Genre } from "../models/book.js";
 import type { ReviseMode } from "../agents/reviser.js";
 
-/** Tool definitions for the agent loop (OpenAI function calling format). */
-const TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
+/** Tool definitions for the agent loop. */
+const TOOLS: ReadonlyArray<ToolDefinition> = [
   {
-    type: "function",
-    function: {
-      name: "write_draft",
-      description: "写一章草稿。生成正文、更新状态卡/账本/伏笔池、保存章节文件。",
-      parameters: {
-        type: "object",
-        properties: {
-          bookId: { type: "string", description: "书籍ID" },
-          guidance: { type: "string", description: "本章创作指导（可选，自然语言）" },
-        },
-        required: ["bookId"],
+    name: "write_draft",
+    description: "写一章草稿。生成正文、更新状态卡/账本/伏笔池、保存章节文件。",
+    parameters: {
+      type: "object",
+      properties: {
+        bookId: { type: "string", description: "书籍ID" },
+        guidance: { type: "string", description: "本章创作指导（可选，自然语言）" },
       },
+      required: ["bookId"],
     },
   },
   {
-    type: "function",
-    function: {
-      name: "audit_chapter",
-      description: "审计指定章节。检查连续性、OOC、数值、伏笔等问题。",
-      parameters: {
-        type: "object",
-        properties: {
-          bookId: { type: "string", description: "书籍ID" },
-          chapterNumber: { type: "number", description: "章节号（不填则审计最新章）" },
-        },
-        required: ["bookId"],
+    name: "audit_chapter",
+    description: "审计指定章节。检查连续性、OOC、数值、伏笔等问题。",
+    parameters: {
+      type: "object",
+      properties: {
+        bookId: { type: "string", description: "书籍ID" },
+        chapterNumber: { type: "number", description: "章节号（不填则审计最新章）" },
       },
+      required: ["bookId"],
     },
   },
   {
-    type: "function",
-    function: {
-      name: "revise_chapter",
-      description: "修订指定章节。根据审计问题修正。支持三种模式：polish(润色)、rewrite(改写)、rework(重写)。",
-      parameters: {
-        type: "object",
-        properties: {
-          bookId: { type: "string", description: "书籍ID" },
-          chapterNumber: { type: "number", description: "章节号（不填则修订最新章）" },
-          mode: { type: "string", enum: ["polish", "rewrite", "rework"], description: "修订模式（默认rewrite）" },
-        },
-        required: ["bookId"],
+    name: "revise_chapter",
+    description: "修订指定章节。根据审计问题修正。支持三种模式：polish(润色)、rewrite(改写)、rework(重写)。",
+    parameters: {
+      type: "object",
+      properties: {
+        bookId: { type: "string", description: "书籍ID" },
+        chapterNumber: { type: "number", description: "章节号（不填则修订最新章）" },
+        mode: { type: "string", enum: ["polish", "rewrite", "rework"], description: "修订模式（默认rewrite）" },
       },
+      required: ["bookId"],
     },
   },
   {
-    type: "function",
-    function: {
-      name: "scan_market",
-      description: "扫描市场趋势。从平台排行榜获取实时数据并分析。",
-      parameters: {
-        type: "object",
-        properties: {},
-      },
+    name: "scan_market",
+    description: "扫描市场趋势。从平台排行榜获取实时数据并分析。",
+    parameters: {
+      type: "object",
+      properties: {},
     },
   },
   {
-    type: "function",
-    function: {
-      name: "create_book",
-      description: "创建一本新书。生成世界观、卷纲、文风指南等基础设定。",
-      parameters: {
-        type: "object",
-        properties: {
-          title: { type: "string", description: "书名" },
-          genre: { type: "string", enum: ["xuanhuan", "xianxia", "urban", "game", "fanfic", "horror", "short", "other"], description: "题材" },
-          platform: { type: "string", enum: ["tomato", "feilu", "qidian", "other"], description: "目标平台" },
-          brief: { type: "string", description: "创作简述/需求（自然语言）" },
-        },
-        required: ["title", "genre", "platform"],
+    name: "create_book",
+    description: "创建一本新书。生成世界观、卷纲、文风指南等基础设定。",
+    parameters: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "书名" },
+        genre: { type: "string", enum: ["xuanhuan", "xianxia", "urban", "game", "fanfic", "horror", "short", "other"], description: "题材" },
+        platform: { type: "string", enum: ["tomato", "feilu", "qidian", "other"], description: "目标平台" },
+        brief: { type: "string", description: "创作简述/需求（自然语言）" },
       },
+      required: ["title", "genre", "platform"],
     },
   },
   {
-    type: "function",
-    function: {
-      name: "get_book_status",
-      description: "获取书籍状态概览：章数、字数、最近章节审计情况。",
-      parameters: {
-        type: "object",
-        properties: {
-          bookId: { type: "string", description: "书籍ID" },
-        },
-        required: ["bookId"],
+    name: "get_book_status",
+    description: "获取书籍状态概览：章数、字数、最近章节审计情况。",
+    parameters: {
+      type: "object",
+      properties: {
+        bookId: { type: "string", description: "书籍ID" },
       },
+      required: ["bookId"],
     },
   },
   {
-    type: "function",
-    function: {
-      name: "read_truth_files",
-      description: "读取书籍的长期记忆（状态卡、资源账本、伏笔池）+ 世界观和卷纲。",
-      parameters: {
-        type: "object",
-        properties: {
-          bookId: { type: "string", description: "书籍ID" },
-        },
-        required: ["bookId"],
+    name: "read_truth_files",
+    description: "读取书籍的长期记忆（状态卡、资源账本、伏笔池）+ 世界观和卷纲。",
+    parameters: {
+      type: "object",
+      properties: {
+        bookId: { type: "string", description: "书籍ID" },
       },
+      required: ["bookId"],
     },
   },
   {
-    type: "function",
-    function: {
-      name: "list_books",
-      description: "列出所有书籍。",
-      parameters: {
-        type: "object",
-        properties: {},
-      },
+    name: "list_books",
+    description: "列出所有书籍。",
+    parameters: {
+      type: "object",
+      properties: {},
     },
   },
   {
-    type: "function",
-    function: {
-      name: "write_full_pipeline",
-      description: "完整管线：写草稿 → 审计 → 自动修订（如需要）。一键完成。",
-      parameters: {
-        type: "object",
-        properties: {
-          bookId: { type: "string", description: "书籍ID" },
-          count: { type: "number", description: "连续写几章（默认1）" },
-        },
-        required: ["bookId"],
+    name: "write_full_pipeline",
+    description: "完整管线：写草稿 → 审计 → 自动修订（如需要）。一键完成。",
+    parameters: {
+      type: "object",
+      properties: {
+        bookId: { type: "string", description: "书籍ID" },
+        count: { type: "number", description: "连续写几章（默认1）" },
       },
+      required: ["bookId"],
     },
   },
 ];
@@ -151,7 +124,7 @@ export async function runAgentLoop(
   const { StateManager } = await import("../state/manager.js");
   const state = new StateManager(config.projectRoot);
 
-  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+  const messages: AgentMessage[] = [
     {
       role: "system",
       content: `你是 InkOS 小说写作 Agent。用户是小说作者，你帮他管理从建书到成稿的全过程。
@@ -165,7 +138,7 @@ export async function runAgentLoop(
 | read_truth_files | 读取长期记忆（状态卡、资源账本、伏笔池）和设定（世界观、卷纲、本书规则） |
 | create_book | 建书，生成世界观、卷纲、本书规则（自动加载题材 genre profile） |
 | write_draft | 写一章草稿（自动加载 genre profile + book_rules） |
-| audit_chapter | 审计章节（18维度，按题材条件启用） |
+| audit_chapter | 审计章节（19维度，按题材条件启用） |
 | revise_chapter | 修订章节（支持 polish/rewrite/rework 三种模式） |
 | write_full_pipeline | 完整管线：写 → 审 → 改（如需要） |
 | scan_market | 扫描平台排行榜，分析市场趋势 |
@@ -196,94 +169,37 @@ export async function runAgentLoop(
   let lastAssistantMessage = "";
 
   for (let turn = 0; turn < maxTurns; turn++) {
-    // Use streaming (some providers like codex-for.me require it)
-    const stream = await config.client.chat.completions.create({
-      model: config.model,
-      messages,
-      tools: TOOLS,
-      tool_choice: "auto",
-      stream: true,
-    });
+    const result = await chatWithTools(config.client, config.model, messages, TOOLS);
 
-    // Accumulate streamed response into a complete message
-    let content = "";
-    const toolCalls: Map<number, { id: string; name: string; arguments: string }> = new Map();
-
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta;
-      if (!delta) continue;
-
-      if (delta.content) {
-        content += delta.content;
-      }
-
-      if (delta.tool_calls) {
-        for (const tc of delta.tool_calls) {
-          const existing = toolCalls.get(tc.index);
-          if (existing) {
-            if (tc.function?.arguments) {
-              existing.arguments += tc.function.arguments;
-            }
-          } else {
-            toolCalls.set(tc.index, {
-              id: tc.id ?? "",
-              name: tc.function?.name ?? "",
-              arguments: tc.function?.arguments ?? "",
-            });
-          }
-        }
-      }
-    }
-
-    // Build the assistant message for history
-    const assembledToolCalls = toolCalls.size > 0
-      ? [...toolCalls.entries()]
-          .sort(([a], [b]) => a - b)
-          .map(([, tc]) => ({
-            id: tc.id,
-            type: "function" as const,
-            function: { name: tc.name, arguments: tc.arguments },
-          }))
-      : undefined;
-
+    // Push assistant message to history
     messages.push({
       role: "assistant" as const,
-      content: content || null,
-      ...(assembledToolCalls ? { tool_calls: assembledToolCalls } : {}),
-    } as OpenAI.Chat.Completions.ChatCompletionMessageParam);
+      content: result.content || null,
+      ...(result.toolCalls.length > 0 ? { toolCalls: result.toolCalls } : {}),
+    });
 
-    // If model produced text, emit it
-    if (content) {
-      lastAssistantMessage = content;
-      options?.onMessage?.(content);
+    if (result.content) {
+      lastAssistantMessage = result.content;
+      options?.onMessage?.(result.content);
     }
 
     // If no tool calls, we're done
-    if (!assembledToolCalls || assembledToolCalls.length === 0) {
-      break;
-    }
+    if (result.toolCalls.length === 0) break;
 
     // Execute tool calls
-    for (const toolCall of assembledToolCalls) {
-      const fn = toolCall.function;
-      const args = JSON.parse(fn.arguments) as Record<string, unknown>;
+    for (const toolCall of result.toolCalls) {
+      const args = JSON.parse(toolCall.arguments) as Record<string, unknown>;
+      options?.onToolCall?.(toolCall.name, args);
 
-      options?.onToolCall?.(fn.name, args);
-
-      let result: string;
+      let toolResult: string;
       try {
-        result = await executeTool(pipeline, state, config, fn.name, args);
+        toolResult = await executeTool(pipeline, state, config, toolCall.name, args);
       } catch (e) {
-        result = JSON.stringify({ error: String(e) });
+        toolResult = JSON.stringify({ error: String(e) });
       }
 
-      options?.onToolResult?.(fn.name, result);
-
-      messages.push({
-        role: "tool" as const,
-        content: result,
-        tool_call_id: toolCall.id,
-      });
+      options?.onToolResult?.(toolCall.name, toolResult);
+      messages.push({ role: "tool" as const, toolCallId: toolCall.id, content: toolResult });
     }
   }
 
@@ -349,7 +265,6 @@ async function executeTool(
         updatedAt: now,
       };
 
-      // If user provided a brief, create a pipeline with that context
       const brief = args.brief as string | undefined;
       if (brief) {
         const contextPipeline = new PipelineRunner({ ...config, externalContext: brief });
@@ -400,5 +315,5 @@ async function executeTool(
   }
 }
 
-/** Export tool definitions so OpenClaw or other systems can reference them. */
+/** Export tool definitions so external systems can reference them. */
 export { TOOLS as AGENT_TOOLS };
