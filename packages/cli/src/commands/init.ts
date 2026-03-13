@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { join, basename } from "node:path";
 import { log, logError, GLOBAL_ENV_PATH } from "../utils.js";
 
 async function hasGlobalConfig(): Promise<boolean> {
@@ -13,10 +13,11 @@ async function hasGlobalConfig(): Promise<boolean> {
 }
 
 export const initCommand = new Command("init")
-  .description("Initialize a new InkOS project")
-  .argument("[name]", "Project name", "my-novel-project")
-  .action(async (name: string) => {
-    const projectDir = join(process.cwd(), name);
+  .description("Initialize an InkOS project (current directory by default)")
+  .argument("[name]", "Project name (creates subdirectory). Omit to init current directory.")
+  .action(async (name?: string) => {
+    const projectDir = name ? join(process.cwd(), name) : process.cwd();
+    const projectName = name ?? basename(projectDir);
 
     try {
       await mkdir(projectDir, { recursive: true });
@@ -24,7 +25,7 @@ export const initCommand = new Command("init")
       await mkdir(join(projectDir, "radar"), { recursive: true });
 
       const config = {
-        name,
+        name: projectName,
         version: "0.1.0",
         llm: {
           provider: process.env.INKOS_LLM_PROVIDER ?? "openai",
@@ -51,7 +52,6 @@ export const initCommand = new Command("init")
       const global = await hasGlobalConfig();
 
       if (global) {
-        // Global config exists — project .env only for overrides
         await writeFile(
           join(projectDir, ".env"),
           [
@@ -66,7 +66,6 @@ export const initCommand = new Command("init")
           "utf-8",
         );
       } else {
-        // No global config — full .env template
         await writeFile(
           join(projectDir, ".env"),
           [
@@ -105,11 +104,11 @@ export const initCommand = new Command("init")
         log("Global LLM config detected. Ready to go!");
         log("");
         log("Next steps:");
-        log(`  cd ${name}`);
+        if (name) log(`  cd ${name}`);
         log("  inkos book create --title '我的小说' --genre xuanhuan --platform tomato");
       } else {
         log("Next steps:");
-        log(`  cd ${name}`);
+        if (name) log(`  cd ${name}`);
         log("  # Option 1: Set global config (recommended, one-time):");
         log("  inkos config set-global --provider openai --base-url https://api.openai.com/v1 --api-key sk-xxx --model gpt-4o");
         log("  # Option 2: Edit .env for this project only");
