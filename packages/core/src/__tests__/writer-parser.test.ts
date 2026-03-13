@@ -1,6 +1,20 @@
 import { describe, it, expect } from "vitest";
 import { WriterAgent } from "../agents/writer.js";
 import type { WriteChapterOutput } from "../agents/writer.js";
+import type { GenreProfile } from "../models/genre-profile.js";
+
+const defaultGenreProfile: GenreProfile = {
+  name: "测试",
+  id: "test",
+  chapterTypes: [],
+  fatigueWords: [],
+  numericalSystem: true,
+  powerScaling: false,
+  eraResearch: false,
+  pacingRule: "",
+  satisfactionTypes: [],
+  auditDimensions: [],
+};
 
 /**
  * WriterAgent.parseOutput is private, so we access it via prototype to test
@@ -9,10 +23,11 @@ import type { WriteChapterOutput } from "../agents/writer.js";
 function callParseOutput(
   chapterNumber: number,
   content: string,
+  genreProfile: GenreProfile = defaultGenreProfile,
 ): WriteChapterOutput {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const proto = WriterAgent.prototype as any;
-  return proto.parseOutput.call(null, chapterNumber, content);
+  return proto.parseOutput.call(null, chapterNumber, content, genreProfile);
 }
 
 // ---------------------------------------------------------------------------

@@ -20,8 +20,14 @@ export interface LLMMessage {
 
 export interface LLMClient {
   readonly provider: "openai" | "anthropic";
+  readonly apiFormat: "chat" | "responses";
   readonly _openai?: OpenAI;
   readonly _anthropic?: Anthropic;
+  readonly defaults: {
+    readonly temperature: number;
+    readonly maxTokens: number;
+    readonly thinkingBudget: number;
+  };
 }
 
 // === Tool-calling Types ===
@@ -52,18 +58,30 @@ export interface ChatWithToolsResult {
 // === Factory ===
 
 export function createLLMClient(config: LLMConfig): LLMClient {
+  const defaults = {
+    temperature: config.temperature ?? 0.7,
+    maxTokens: config.maxTokens ?? 8192,
+    thinkingBudget: config.thinkingBudget ?? 0,
+  };
+
+  const apiFormat = config.apiFormat ?? "chat";
+
   if (config.provider === "anthropic") {
     // Anthropic SDK appends /v1/ internally — strip if user included it
     const baseURL = config.baseUrl.replace(/\/v1\/?$/, "");
     return {
       provider: "anthropic",
+      apiFormat,
       _anthropic: new Anthropic({ apiKey: config.apiKey, baseURL }),
+      defaults,
     };
   }
   // openai or custom — both use OpenAI SDK
   return {
     provider: "openai",
+    apiFormat,
     _openai: new OpenAI({ apiKey: config.apiKey, baseURL: config.baseUrl }),
+    defaults,
   };
 }
 
@@ -78,10 +96,17 @@ export async function chatCompletion(
     readonly maxTokens?: number;
   },
 ): Promise<LLMResponse> {
+  const resolved = {
+    temperature: options?.temperature ?? client.defaults.temperature,
+    maxTokens: options?.maxTokens ?? client.defaults.maxTokens,
+  };
   if (client.provider === "anthropic") {
-    return chatCompletionAnthropic(client._anthropic!, model, messages, options);
+    return chatCompletionAnthropic(client._anthropic!, model, messages, resolved, client.defaults.thinkingBudget);
   }
-  return chatCompletionOpenAI(client._openai!, model, messages, options);
+  if (client.apiFormat === "responses") {
+    return chatCompletionOpenAIResponses(client._openai!, model, messages, resolved);
+  }
+  return chatCompletionOpenAIChat(client._openai!, model, messages, resolved);
 }
 
 // === Tool-calling Chat (used by agent loop) ===
@@ -96,67 +121,87 @@ export async function chatWithTools(
     readonly maxTokens?: number;
   },
 ): Promise<ChatWithToolsResult> {
+  const resolved = {
+    temperature: options?.temperature ?? client.defaults.temperature,
+    maxTokens: options?.maxTokens ?? client.defaults.maxTokens,
+  };
   if (client.provider === "anthropic") {
-    return chatWithToolsAnthropic(client._anthropic!, model, messages, tools, options);
+    return chatWithToolsAnthropic(client._anthropic!, model, messages, tools, resolved, client.defaults.thinkingBudget);
   }
-  return chatWithToolsOpenAI(client._openai!, model, messages, tools, options);
+  if (client.apiFormat === "responses") {
+    return chatWithToolsOpenAIResponses(client._openai!, model, messages, tools, resolved);
+  }
+  return chatWithToolsOpenAIChat(client._openai!, model, messages, tools, resolved);
 }
 
-// === OpenAI Implementation ===
+// === OpenAI Chat Completions API Implementation (default) ===
 
-async function chatCompletionOpenAI(
+async function chatCompletionOpenAIChat(
   client: OpenAI,
   model: string,
   messages: ReadonlyArray<LLMMessage>,
-  options?: { readonly temperature?: number; readonly maxTokens?: number },
+  options: { readonly temperature: number; readonly maxTokens: number },
 ): Promise<LLMResponse> {
   const stream = await client.chat.completions.create({
     model,
-    messages: messages.map((m) => ({ role: m.role, content: m.content })),
-    temperature: options?.temperature ?? 0.7,
-    max_tokens: options?.maxTokens ?? 8192,
+    messages: messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    })),
+    temperature: options.temperature,
+    max_tokens: options.maxTokens,
     stream: true,
   });
 
   const chunks: string[] = [];
-  let promptTokens = 0;
-  let completionTokens = 0;
-  let totalTokens = 0;
+  let inputTokens = 0;
+  let outputTokens = 0;
 
   for await (const chunk of stream) {
     const delta = chunk.choices[0]?.delta?.content;
     if (delta) chunks.push(delta);
     if (chunk.usage) {
-      promptTokens = chunk.usage.prompt_tokens ?? 0;
-      completionTokens = chunk.usage.completion_tokens ?? 0;
-      totalTokens = chunk.usage.total_tokens ?? 0;
+      inputTokens = chunk.usage.prompt_tokens ?? 0;
+      outputTokens = chunk.usage.completion_tokens ?? 0;
     }
   }
 
   const content = chunks.join("");
   if (!content) throw new Error("LLM returned empty response");
 
-  return { content, usage: { promptTokens, completionTokens, totalTokens } };
+  return {
+    content,
+    usage: {
+      promptTokens: inputTokens,
+      completionTokens: outputTokens,
+      totalTokens: inputTokens + outputTokens,
+    },
+  };
 }
 
-async function chatWithToolsOpenAI(
+async function chatWithToolsOpenAIChat(
   client: OpenAI,
   model: string,
   messages: ReadonlyArray<AgentMessage>,
   tools: ReadonlyArray<ToolDefinition>,
-  options?: { readonly temperature?: number; readonly maxTokens?: number },
+  options: { readonly temperature: number; readonly maxTokens: number },
 ): Promise<ChatWithToolsResult> {
-  const openaiMessages = messages.map(agentMessageToOpenAI);
-  const openaiTools = tools.map((t) => ({
+  const openaiMessages = agentMessagesToOpenAIChat(messages);
+  const openaiTools: OpenAI.Chat.Completions.ChatCompletionTool[] = tools.map((t) => ({
     type: "function" as const,
-    function: { name: t.name, description: t.description, parameters: t.parameters },
+    function: {
+      name: t.name,
+      description: t.description,
+      parameters: t.parameters,
+    },
   }));
 
   const stream = await client.chat.completions.create({
     model,
     messages: openaiMessages,
     tools: openaiTools,
-    tool_choice: "auto",
+    temperature: options.temperature,
+    max_tokens: options.maxTokens,
     stream: true,
   });
 
@@ -165,13 +210,12 @@ async function chatWithToolsOpenAI(
 
   for await (const chunk of stream) {
     const delta = chunk.choices[0]?.delta;
-    if (!delta) continue;
-    if (delta.content) content += delta.content;
-    if (delta.tool_calls) {
+    if (delta?.content) content += delta.content;
+    if (delta?.tool_calls) {
       for (const tc of delta.tool_calls) {
         const existing = toolCallMap.get(tc.index);
         if (existing) {
-          if (tc.function?.arguments) existing.arguments += tc.function.arguments;
+          existing.arguments += tc.function?.arguments ?? "";
         } else {
           toolCallMap.set(tc.index, {
             id: tc.id ?? "",
@@ -183,30 +227,183 @@ async function chatWithToolsOpenAI(
     }
   }
 
-  const toolCalls = [...toolCallMap.entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([, tc]) => ({ id: tc.id, name: tc.name, arguments: tc.arguments }));
+  const toolCalls: ToolCall[] = [...toolCallMap.values()];
+  return { content, toolCalls };
+}
+
+function agentMessagesToOpenAIChat(
+  messages: ReadonlyArray<AgentMessage>,
+): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+  const result: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
+
+  for (const msg of messages) {
+    if (msg.role === "system") {
+      result.push({ role: "system", content: msg.content });
+      continue;
+    }
+    if (msg.role === "user") {
+      result.push({ role: "user", content: msg.content });
+      continue;
+    }
+    if (msg.role === "assistant") {
+      const assistantMsg: OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam = {
+        role: "assistant",
+        content: msg.content ?? null,
+      };
+      if (msg.toolCalls && msg.toolCalls.length > 0) {
+        assistantMsg.tool_calls = msg.toolCalls.map((tc) => ({
+          id: tc.id,
+          type: "function" as const,
+          function: { name: tc.name, arguments: tc.arguments },
+        }));
+      }
+      result.push(assistantMsg);
+      continue;
+    }
+    if (msg.role === "tool") {
+      result.push({
+        role: "tool",
+        tool_call_id: msg.toolCallId,
+        content: msg.content,
+      });
+    }
+  }
+
+  return result;
+}
+
+// === OpenAI Responses API Implementation (optional) ===
+
+async function chatCompletionOpenAIResponses(
+  client: OpenAI,
+  model: string,
+  messages: ReadonlyArray<LLMMessage>,
+  options: { readonly temperature: number; readonly maxTokens: number },
+): Promise<LLMResponse> {
+  const input: OpenAI.Responses.ResponseInputItem[] = messages.map((m) => ({
+    role: m.role as "system" | "user" | "assistant",
+    content: m.content,
+  }));
+
+  const stream = await client.responses.create({
+    model,
+    input,
+    temperature: options.temperature,
+    max_output_tokens: options.maxTokens,
+    stream: true,
+  });
+
+  const chunks: string[] = [];
+  let inputTokens = 0;
+  let outputTokens = 0;
+
+  for await (const event of stream) {
+    if (event.type === "response.output_text.delta") {
+      chunks.push(event.delta);
+    }
+    if (event.type === "response.completed") {
+      inputTokens = event.response.usage?.input_tokens ?? 0;
+      outputTokens = event.response.usage?.output_tokens ?? 0;
+    }
+  }
+
+  const content = chunks.join("");
+  if (!content) throw new Error("LLM returned empty response");
+
+  return {
+    content,
+    usage: {
+      promptTokens: inputTokens,
+      completionTokens: outputTokens,
+      totalTokens: inputTokens + outputTokens,
+    },
+  };
+}
+
+async function chatWithToolsOpenAIResponses(
+  client: OpenAI,
+  model: string,
+  messages: ReadonlyArray<AgentMessage>,
+  tools: ReadonlyArray<ToolDefinition>,
+  options: { readonly temperature: number; readonly maxTokens: number },
+): Promise<ChatWithToolsResult> {
+  const input = agentMessagesToResponsesInput(messages);
+  const responsesTools: OpenAI.Responses.Tool[] = tools.map((t) => ({
+    type: "function" as const,
+    name: t.name,
+    description: t.description,
+    parameters: t.parameters as OpenAI.Responses.FunctionTool["parameters"],
+    strict: false,
+  }));
+
+  const stream = await client.responses.create({
+    model,
+    input,
+    tools: responsesTools,
+    temperature: options.temperature,
+    max_output_tokens: options.maxTokens,
+    stream: true,
+  });
+
+  let content = "";
+  const toolCalls: ToolCall[] = [];
+
+  for await (const event of stream) {
+    if (event.type === "response.output_text.delta") {
+      content += event.delta;
+    }
+    if (event.type === "response.output_item.done" && event.item.type === "function_call") {
+      toolCalls.push({
+        id: event.item.call_id,
+        name: event.item.name,
+        arguments: event.item.arguments,
+      });
+    }
+  }
 
   return { content, toolCalls };
 }
 
-function agentMessageToOpenAI(msg: AgentMessage): OpenAI.Chat.Completions.ChatCompletionMessageParam {
-  if (msg.role === "system") return { role: "system", content: msg.content };
-  if (msg.role === "user") return { role: "user", content: msg.content };
-  if (msg.role === "tool") return { role: "tool", content: msg.content, tool_call_id: msg.toolCallId };
-  // assistant
-  if (msg.toolCalls && msg.toolCalls.length > 0) {
-    return {
-      role: "assistant",
-      content: msg.content,
-      tool_calls: msg.toolCalls.map((tc) => ({
-        id: tc.id,
-        type: "function" as const,
-        function: { name: tc.name, arguments: tc.arguments },
-      })),
-    };
+function agentMessagesToResponsesInput(
+  messages: ReadonlyArray<AgentMessage>,
+): OpenAI.Responses.ResponseInputItem[] {
+  const result: OpenAI.Responses.ResponseInputItem[] = [];
+
+  for (const msg of messages) {
+    if (msg.role === "system") {
+      result.push({ role: "system", content: msg.content });
+      continue;
+    }
+    if (msg.role === "user") {
+      result.push({ role: "user", content: msg.content });
+      continue;
+    }
+    if (msg.role === "assistant") {
+      if (msg.content) {
+        result.push({ role: "assistant", content: msg.content });
+      }
+      if (msg.toolCalls) {
+        for (const tc of msg.toolCalls) {
+          result.push({
+            type: "function_call" as const,
+            call_id: tc.id,
+            name: tc.name,
+            arguments: tc.arguments,
+          });
+        }
+      }
+      continue;
+    }
+    if (msg.role === "tool") {
+      result.push({
+        type: "function_call_output" as const,
+        call_id: msg.toolCallId,
+        output: msg.content,
+      });
+    }
   }
-  return { role: "assistant", content: msg.content };
+
+  return result;
 }
 
 // === Anthropic Implementation ===
@@ -215,7 +412,8 @@ async function chatCompletionAnthropic(
   client: Anthropic,
   model: string,
   messages: ReadonlyArray<LLMMessage>,
-  options?: { readonly temperature?: number; readonly maxTokens?: number },
+  options: { readonly temperature: number; readonly maxTokens: number },
+  thinkingBudget: number = 0,
 ): Promise<LLMResponse> {
   const systemText = messages
     .filter((m) => m.role === "system")
@@ -230,8 +428,10 @@ async function chatCompletionAnthropic(
       role: m.role as "user" | "assistant",
       content: m.content,
     })),
-    temperature: options?.temperature ?? 0.7,
-    max_tokens: options?.maxTokens ?? 8192,
+    ...(thinkingBudget > 0
+      ? { thinking: { type: "enabled" as const, budget_tokens: thinkingBudget } }
+      : { temperature: options.temperature }),
+    max_tokens: options.maxTokens,
     stream: true,
   });
 
@@ -269,7 +469,8 @@ async function chatWithToolsAnthropic(
   model: string,
   messages: ReadonlyArray<AgentMessage>,
   tools: ReadonlyArray<ToolDefinition>,
-  options?: { readonly temperature?: number; readonly maxTokens?: number },
+  options: { readonly temperature: number; readonly maxTokens: number },
+  thinkingBudget: number = 0,
 ): Promise<ChatWithToolsResult> {
   const systemText = messages
     .filter((m) => m.role === "system")
@@ -289,7 +490,10 @@ async function chatWithToolsAnthropic(
     ...(systemText ? { system: systemText } : {}),
     messages: anthropicMessages,
     tools: anthropicTools,
-    max_tokens: options?.maxTokens ?? 8192,
+    ...(thinkingBudget > 0
+      ? { thinking: { type: "enabled" as const, budget_tokens: thinkingBudget } }
+      : { temperature: options.temperature }),
+    max_tokens: options.maxTokens,
     stream: true,
   });
 

@@ -42,8 +42,20 @@ export async function loadConfig(): Promise<ProjectConfig> {
     const env = process.env;
     if (env.INKOS_LLM_PROVIDER) config.llm.provider = env.INKOS_LLM_PROVIDER;
     if (env.INKOS_LLM_BASE_URL) config.llm.baseUrl = env.INKOS_LLM_BASE_URL;
-    if (env.INKOS_LLM_API_KEY) config.llm.apiKey = env.INKOS_LLM_API_KEY;
     if (env.INKOS_LLM_MODEL) config.llm.model = env.INKOS_LLM_MODEL;
+    if (env.INKOS_LLM_TEMPERATURE) config.llm.temperature = parseFloat(env.INKOS_LLM_TEMPERATURE);
+    if (env.INKOS_LLM_MAX_TOKENS) config.llm.maxTokens = parseInt(env.INKOS_LLM_MAX_TOKENS, 10);
+    if (env.INKOS_LLM_THINKING_BUDGET) config.llm.thinkingBudget = parseInt(env.INKOS_LLM_THINKING_BUDGET, 10);
+    if (env.INKOS_LLM_API_FORMAT) config.llm.apiFormat = env.INKOS_LLM_API_FORMAT;
+
+    // API key ONLY from env — never stored in inkos.json
+    const apiKey = env.INKOS_LLM_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        "INKOS_LLM_API_KEY not set. Add it to your .env file.",
+      );
+    }
+    config.llm.apiKey = apiKey;
 
     return ProjectConfigSchema.parse(config);
   } catch (e) {

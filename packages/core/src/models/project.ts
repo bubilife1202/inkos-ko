@@ -3,8 +3,12 @@ import { z } from "zod";
 export const LLMConfigSchema = z.object({
   provider: z.enum(["anthropic", "openai", "custom"]),
   baseUrl: z.string().url(),
-  apiKey: z.string().min(1),
+  apiKey: z.string().default(""),
   model: z.string().min(1),
+  temperature: z.number().min(0).max(2).default(0.7),
+  maxTokens: z.number().int().min(1).default(8192),
+  thinkingBudget: z.number().int().min(0).default(0),
+  apiFormat: z.enum(["chat", "responses"]).default("chat"),
 });
 
 export type LLMConfig = z.infer<typeof LLMConfigSchema>;

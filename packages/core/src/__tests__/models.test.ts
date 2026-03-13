@@ -362,15 +362,13 @@ describe("LLMConfigSchema", () => {
     ).toThrow();
   });
 
-  it("rejects empty apiKey", () => {
-    expect(() =>
-      LLMConfigSchema.parse({
-        provider: "anthropic",
-        baseUrl: "https://api.example.com",
-        apiKey: "",
-        model: "m",
-      }),
-    ).toThrow();
+  it("defaults apiKey to empty string when omitted", () => {
+    const result = LLMConfigSchema.parse({
+      provider: "anthropic",
+      baseUrl: "https://api.example.com",
+      model: "m",
+    });
+    expect(result.apiKey).toBe("");
   });
 
   it("rejects empty model", () => {

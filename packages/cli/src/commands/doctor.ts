@@ -34,18 +34,17 @@ export const doctorCommand = new Command("doctor")
       checks.push({ name: ".env", ok: false, detail: "Not found" });
     }
 
-    // 4. Check LLM API key
-    try {
-      const raw = await readFile(join(root, "inkos.json"), "utf-8");
-      const config = JSON.parse(raw);
-      const hasKey = config.llm?.apiKey && config.llm.apiKey.length > 10;
+    // 4. Check LLM API key (from .env only)
+    {
+      const { config: loadDotenv } = await import("dotenv");
+      loadDotenv({ path: join(root, ".env") });
+      const apiKey = process.env.INKOS_LLM_API_KEY;
+      const hasKey = !!apiKey && apiKey.length > 10 && apiKey !== "your-api-key-here";
       checks.push({
         name: "LLM API Key",
         ok: hasKey,
-        detail: hasKey ? "Configured" : "Missing or too short",
+        detail: hasKey ? "Configured (from .env)" : "Missing in .env — set INKOS_LLM_API_KEY",
       });
-    } catch {
-      checks.push({ name: "LLM API Key", ok: false, detail: "Cannot read config" });
     }
 
     // 5. Check books directory
