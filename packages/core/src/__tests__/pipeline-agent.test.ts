@@ -296,6 +296,28 @@ describe("agent pipeline tools", () => {
     });
   });
 
+  it("passes narrativeMode through create_book so agents can create interactive books", async () => {
+    const initBook = vi.spyOn(pipeline, "initBook").mockResolvedValue();
+
+    await executeAgentTool(
+      pipeline,
+      state,
+      config,
+      "create_book",
+      {
+        title: "Branch Agent Book",
+        genre: "other",
+        platform: "tomato",
+        narrativeMode: "interactive-tree",
+      },
+    );
+
+    expect(initBook).toHaveBeenCalledWith(expect.objectContaining({
+      title: "Branch Agent Book",
+      narrativeMode: "interactive-tree",
+    }));
+  });
+
   it("plans and composes chapters through the agent tool surface", async () => {
     const planResult = JSON.parse(await executeAgentTool(
       pipeline,

@@ -76,7 +76,7 @@ const TOOLS: ReadonlyArray<ToolDefinition> = [
   },
   {
     name: "create_book",
-    description: "创建一本新书。生成世界观、卷纲、文风指南等基础设定。",
+    description: "创建一本新书。生成世界观、卷纲、文风指南等基础设定。可选 narrativeMode=interactive-tree 来创建互动分支书。",
     parameters: {
       type: "object",
       properties: {
@@ -84,6 +84,7 @@ const TOOLS: ReadonlyArray<ToolDefinition> = [
         genre: { type: "string", enum: ["xuanhuan", "xianxia", "urban", "horror", "other"], description: "题材" },
         platform: { type: "string", enum: ["tomato", "feilu", "qidian", "other"], description: "目标平台" },
         brief: { type: "string", description: "创作简述/需求（自然语言）" },
+        narrativeMode: { type: "string", enum: ["linear", "interactive-tree"], description: "叙事模式（默认 linear）" },
       },
       required: ["title", "genre", "platform"],
     },
@@ -292,7 +293,7 @@ export async function runAgentLoop(
 | list_books | 列出所有书 |
 | get_book_status | 查看书的章数、字数、审计状态 |
 | read_truth_files | 读取长期记忆（状态卡、资源账本、伏笔池）和设定（世界观、卷纲、本书规则） |
-| create_book | 建书，生成世界观、卷纲、本书规则（自动加载题材 genre profile） |
+| create_book | 建书，生成世界观、卷纲、本书规则（支持 linear / interactive-tree） |
 | get_branch_tree | 读取互动小说的分支树 |
 | get_branch_choices | 读取当前 active branch 的待读者选项 |
 | choose_branch | 选中一个互动分支选项 |
@@ -482,6 +483,7 @@ export async function executeAgentTool(
         title,
         platform: ((args.platform as string) ?? "tomato") as Platform,
         genre: ((args.genre as string) ?? "xuanhuan") as Genre,
+        narrativeMode: ((args.narrativeMode as string) ?? "linear") as "linear" | "interactive-tree",
         status: "outlining" as const,
         targetChapters: 200,
         chapterWordCount: 3000,
