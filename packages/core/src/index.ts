@@ -1,5 +1,5 @@
 // Models
-export { type BookConfig, type Platform, type Genre, type BookStatus, type FanficMode, BookConfigSchema, PlatformSchema, GenreSchema, BookStatusSchema, FanficModeSchema } from "./models/book.js";
+export { type BookConfig, type Platform, type Genre, type BookStatus, type FanficMode, type NarrativeMode, BookConfigSchema, PlatformSchema, GenreSchema, BookStatusSchema, FanficModeSchema, NarrativeModeSchema } from "./models/book.js";
 export { type ChapterMeta, type ChapterStatus, ChapterMetaSchema, ChapterStatusSchema } from "./models/chapter.js";
 export { type ProjectConfig, type LLMConfig, type NotifyChannel, type DetectionConfig, type QualityGates, type AgentLLMOverride, type InputGovernanceMode, ProjectConfigSchema, LLMConfigSchema, AgentLLMOverrideSchema, DetectionConfigSchema, QualityGatesSchema, InputGovernanceModeSchema } from "./models/project.js";
 export { type CurrentState, type ParticleLedger, type PendingHooks, type PendingHook, type LedgerEntry } from "./models/state.js";
@@ -7,6 +7,18 @@ export { type GenreProfile, type ParsedGenreProfile, GenreProfileSchema, parseGe
 export { type BookRules, type ParsedBookRules, BookRulesSchema, parseBookRules } from "./models/book-rules.js";
 export { type DetectionHistoryEntry, type DetectionStats } from "./models/detection.js";
 export { type StyleProfile } from "./models/style-profile.js";
+export {
+  type InteractiveSnapshotRef,
+  type InteractiveBranchNodeStatus,
+  type InteractiveBranchNode,
+  type InteractiveChoice,
+  type InteractiveBranchTree,
+  InteractiveSnapshotRefSchema,
+  InteractiveBranchNodeStatusSchema,
+  InteractiveBranchNodeSchema,
+  InteractiveChoiceSchema,
+  InteractiveBranchTreeSchema,
+} from "./models/interactive-fiction.js";
 export { type LengthCountingMode, type LengthNormalizeMode, type LengthSpec, type LengthTelemetry, type LengthWarning, LengthCountingModeSchema, LengthNormalizeModeSchema, LengthSpecSchema, LengthTelemetrySchema, LengthWarningSchema } from "./models/length-governance.js";
 export {
   type RuntimeStateLanguage,

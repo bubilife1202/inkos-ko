@@ -19,6 +19,9 @@ export type BookStatus = z.infer<typeof BookStatusSchema>;
 export const FanficModeSchema = z.enum(["canon", "au", "ooc", "cp"]);
 export type FanficMode = z.infer<typeof FanficModeSchema>;
 
+export const NarrativeModeSchema = z.enum(["linear", "interactive-tree"]);
+export type NarrativeMode = z.infer<typeof NarrativeModeSchema>;
+
 export const BookConfigSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
@@ -28,10 +31,13 @@ export const BookConfigSchema = z.object({
   targetChapters: z.number().int().min(1).default(200),
   chapterWordCount: z.number().int().min(1000).default(3000),
   language: z.enum(["zh", "en"]).optional(),
+  narrativeMode: NarrativeModeSchema.default("linear"),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   parentBookId: z.string().optional(),
   fanficMode: FanficModeSchema.optional(),
 });
 
-export type BookConfig = z.infer<typeof BookConfigSchema>;
+export type BookConfig = Omit<z.infer<typeof BookConfigSchema>, "narrativeMode"> & {
+  narrativeMode?: NarrativeMode;
+};

@@ -4,6 +4,7 @@ import {
   PlatformSchema,
   GenreSchema,
   BookStatusSchema,
+  NarrativeModeSchema,
 } from "../models/book.js";
 import { ChapterMetaSchema, ChapterStatusSchema } from "../models/chapter.js";
 import {
@@ -122,6 +123,16 @@ describe("BookConfigSchema", () => {
       BookConfigSchema.parse({ ...validBook, createdAt: "not-a-date" }),
     ).toThrow();
   });
+
+  it("defaults narrativeMode to linear", () => {
+    const result = BookConfigSchema.parse(validBook);
+    expect(result.narrativeMode).toBe("linear");
+  });
+
+  it("accepts interactive-tree narrative mode", () => {
+    const result = BookConfigSchema.parse({ ...validBook, narrativeMode: "interactive-tree" });
+    expect(result.narrativeMode).toBe("interactive-tree");
+  });
 });
 
 describe("PlatformSchema", () => {
@@ -176,6 +187,16 @@ describe("BookStatusSchema", () => {
 
   it("rejects unknown status", () => {
     expect(() => BookStatusSchema.parse("archived")).toThrow();
+  });
+});
+
+describe("NarrativeModeSchema", () => {
+  it.each(["linear", "interactive-tree"] as const)("accepts '%s'", (value) => {
+    expect(NarrativeModeSchema.parse(value)).toBe(value);
+  });
+
+  it("rejects unknown narrative mode", () => {
+    expect(() => NarrativeModeSchema.parse("interactive")).toThrow();
   });
 });
 
