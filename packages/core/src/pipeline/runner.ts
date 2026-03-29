@@ -125,6 +125,13 @@ export interface BookStatusInfo {
   readonly totalWords: number;
   readonly nextChapter: number;
   readonly chapters: ReadonlyArray<ChapterMeta>;
+  readonly activeBranch?: {
+    activeNodeId: string;
+    displayPath: string;
+    status: "active" | "awaiting-choice" | "dormant" | "completed";
+    visibleChapterNumbers: ReadonlyArray<number>;
+    pendingChoiceCount: number;
+  };
 }
 
 export interface InteractiveBranchChoicesResult {
@@ -933,7 +940,8 @@ export class PipelineRunner {
   /** Get book status overview. */
   async getBookStatus(bookId: string): Promise<BookStatusInfo> {
     const book = await this.state.loadBookConfig(bookId);
-    const chapters = await this.state.loadChapterIndex(bookId);
+    const chapters = await this.state.loadVisibleChapterIndex(bookId);
+    const activeBranch = await this.state.loadActiveBranchView(bookId);
     const nextChapter = await this.state.getNextChapterNumber(bookId);
     const totalWords = chapters.reduce((sum, ch) => sum + ch.wordCount, 0);
 
@@ -947,6 +955,7 @@ export class PipelineRunner {
       totalWords,
       nextChapter,
       chapters: [...chapters],
+      ...(activeBranch ? { activeBranch } : {}),
     };
   }
 

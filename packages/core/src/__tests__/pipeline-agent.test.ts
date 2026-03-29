@@ -75,6 +75,225 @@ describe("agent pipeline tools", () => {
     expect(toolNames).toContain("compose_chapter");
     expect(toolNames).toContain("update_author_intent");
     expect(toolNames).toContain("update_current_focus");
+    expect(toolNames).toContain("get_branch_tree");
+    expect(toolNames).toContain("get_branch_choices");
+    expect(toolNames).toContain("choose_branch");
+    expect(toolNames).toContain("switch_branch");
+  });
+
+  it("exposes interactive branch tools through the agent tool surface", async () => {
+    const branchTree = {
+      version: 1 as const,
+      rootNodeId: "root",
+      activeNodeId: "root",
+      nodes: [
+        {
+          nodeId: "root",
+          parentNodeId: null,
+          sourceChapterId: null,
+          sourceChapterNumber: 0,
+          branchDepth: 0,
+          branchLabel: "Main Route",
+          status: "awaiting-choice" as const,
+          snapshotRef: { chapterNumber: 1 },
+          selectedChoiceId: null,
+          chapterIds: ["ch-0001"],
+          displayPath: "main",
+        },
+      ],
+      choices: [
+        {
+          choiceId: "choice-root-a",
+          fromNodeId: "root",
+          toNodeId: "node-a",
+          label: "Route A",
+          intent: "Take route A.",
+          immediateGoal: "Advance route A.",
+          expectedCost: "Lose route B.",
+          expectedRisk: "Conflict rises.",
+          hookPressure: "A hook advances.",
+          characterPressure: "A pressure rises.",
+          tone: "tense",
+          selected: false,
+        },
+      ],
+    };
+
+    vi.spyOn(pipeline, "getInteractiveBranchTree").mockResolvedValue(branchTree);
+    vi.spyOn(pipeline, "listInteractiveChoices").mockResolvedValue({
+      bookId,
+      activeNodeId: "root",
+      activeNodeStatus: "awaiting-choice",
+      choices: branchTree.choices,
+    });
+    vi.spyOn(pipeline, "chooseInteractiveBranch").mockResolvedValue({
+      bookId,
+      activeNodeId: "node-a",
+      restoredChapter: 1,
+      selectedChoiceId: "choice-root-a",
+    });
+    vi.spyOn(pipeline, "switchInteractiveBranch").mockResolvedValue({
+      bookId,
+      activeNodeId: "node-b",
+      restoredChapter: 1,
+    });
+
+    await expect(
+      executeAgentTool(pipeline, state, config, "get_branch_tree", { bookId }),
+    ).resolves.toBe(JSON.stringify(branchTree));
+
+    await expect(
+      executeAgentTool(pipeline, state, config, "get_branch_choices", { bookId }),
+    ).resolves.toBe(JSON.stringify({
+      bookId,
+      activeNodeId: "root",
+      activeNodeStatus: "awaiting-choice",
+      choices: branchTree.choices,
+    }));
+
+    await expect(
+      executeAgentTool(pipeline, state, config, "choose_branch", {
+        bookId,
+        choiceId: "choice-root-a",
+      }),
+    ).resolves.toBe(JSON.stringify({
+      bookId,
+      activeNodeId: "node-a",
+      restoredChapter: 1,
+      selectedChoiceId: "choice-root-a",
+    }));
+
+    await expect(
+      executeAgentTool(pipeline, state, config, "switch_branch", {
+        bookId,
+        nodeId: "node-b",
+      }),
+    ).resolves.toBe(JSON.stringify({
+      bookId,
+      activeNodeId: "node-b",
+      restoredChapter: 1,
+    }));
+  });
+
+  it("returns active-branch scoped status for interactive books", async () => {
+    const baseBook = await state.loadBookConfig(bookId);
+    await state.saveBookConfig(bookId, {
+      ...baseBook,
+      narrativeMode: "interactive-tree",
+    });
+    await state.saveChapterIndex(bookId, [
+      {
+        number: 1,
+        title: "Seed",
+        status: "approved",
+        wordCount: 100,
+        createdAt: "2026-03-30T00:00:00.000Z",
+        updatedAt: "2026-03-30T00:00:00.000Z",
+        auditIssues: [],
+        lengthWarnings: [],
+      },
+      {
+        number: 2,
+        title: "Route A",
+        status: "ready-for-review",
+        wordCount: 120,
+        createdAt: "2026-03-30T00:00:00.000Z",
+        updatedAt: "2026-03-30T00:00:00.000Z",
+        auditIssues: [],
+        lengthWarnings: [],
+      },
+      {
+        number: 3,
+        title: "Route B",
+        status: "ready-for-review",
+        wordCount: 140,
+        createdAt: "2026-03-30T00:00:00.000Z",
+        updatedAt: "2026-03-30T00:00:00.000Z",
+        auditIssues: [],
+        lengthWarnings: [],
+      },
+    ]);
+    await state.saveBranchTree(bookId, {
+      version: 1,
+      rootNodeId: "root",
+      activeNodeId: "node-a",
+      nodes: [
+        {
+          nodeId: "root",
+          parentNodeId: null,
+          sourceChapterId: null,
+          sourceChapterNumber: 0,
+          branchDepth: 0,
+          branchLabel: "Main Route",
+          status: "completed",
+          snapshotRef: { chapterNumber: 1 },
+          selectedChoiceId: "choice-root-a",
+          chapterIds: ["ch-0001"],
+          displayPath: "main",
+        },
+        {
+          nodeId: "node-a",
+          parentNodeId: "root",
+          sourceChapterId: "ch-0001",
+          sourceChapterNumber: 1,
+          branchDepth: 1,
+          branchLabel: "Route A",
+          status: "active",
+          snapshotRef: { chapterNumber: 2 },
+          selectedChoiceId: null,
+          chapterIds: ["ch-0002"],
+          displayPath: "main.a",
+        },
+        {
+          nodeId: "node-b",
+          parentNodeId: "root",
+          sourceChapterId: "ch-0001",
+          sourceChapterNumber: 1,
+          branchDepth: 1,
+          branchLabel: "Route B",
+          status: "dormant",
+          snapshotRef: { chapterNumber: 1 },
+          selectedChoiceId: null,
+          chapterIds: ["ch-0003"],
+          displayPath: "main.b",
+        },
+      ],
+      choices: [
+        {
+          choiceId: "choice-root-a",
+          fromNodeId: "root",
+          toNodeId: "node-a",
+          label: "Route A",
+          intent: "Take route A.",
+          immediateGoal: "Advance route A.",
+          expectedCost: "Lose route B.",
+          expectedRisk: "Conflict rises.",
+          hookPressure: "A hook advances.",
+          characterPressure: "A pressure rises.",
+          tone: "tense",
+          selected: true,
+        },
+      ],
+    });
+
+    const result = JSON.parse(await executeAgentTool(
+      pipeline,
+      state,
+      config,
+      "get_book_status",
+      { bookId },
+    ));
+
+    expect(result.chaptersWritten).toBe(2);
+    expect(result.totalWords).toBe(220);
+    expect(result.chapters.map((chapter: { number: number }) => chapter.number)).toEqual([1, 2]);
+    expect(result.activeBranch).toEqual({
+      activeNodeId: "node-a",
+      displayPath: "main.a",
+      status: "active",
+      visibleChapterNumbers: [1, 2],
+      pendingChoiceCount: 0,
+    });
   });
 
   it("plans and composes chapters through the agent tool surface", async () => {

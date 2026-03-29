@@ -114,7 +114,7 @@ const TOOLS: ReadonlyArray<ToolDefinition> = [
   },
   {
     name: "get_book_status",
-    description: "获取书籍状态概览：章数、字数、最近章节审计情况。",
+    description: "获取书籍状态概览：章数、字数、最近章节审计情况。互动书默认返回当前 active branch 的状态。",
     parameters: {
       type: "object",
       properties: {
@@ -140,6 +140,52 @@ const TOOLS: ReadonlyArray<ToolDefinition> = [
     parameters: {
       type: "object",
       properties: {},
+    },
+  },
+  {
+    name: "get_branch_tree",
+    description: "读取互动小说的分支树。用于查看当前 active branch、历史分叉和可切回的分支节点。",
+    parameters: {
+      type: "object",
+      properties: {
+        bookId: { type: "string", description: "互动书籍ID" },
+      },
+      required: ["bookId"],
+    },
+  },
+  {
+    name: "get_branch_choices",
+    description: "读取当前 active branch 的待读者选项。用于在互动小说里决定接下来走哪条分支。",
+    parameters: {
+      type: "object",
+      properties: {
+        bookId: { type: "string", description: "互动书籍ID" },
+      },
+      required: ["bookId"],
+    },
+  },
+  {
+    name: "choose_branch",
+    description: "在当前 active branch 等待选择时，正式选中一个读者选项并切换到对应分支。",
+    parameters: {
+      type: "object",
+      properties: {
+        bookId: { type: "string", description: "互动书籍ID" },
+        choiceId: { type: "string", description: "待选分支的 choiceId" },
+      },
+      required: ["bookId", "choiceId"],
+    },
+  },
+  {
+    name: "switch_branch",
+    description: "切换到一个已有互动分支节点，并恢复该分支对应的状态快照。",
+    parameters: {
+      type: "object",
+      properties: {
+        bookId: { type: "string", description: "互动书籍ID" },
+        nodeId: { type: "string", description: "目标分支节点ID" },
+      },
+      required: ["bookId", "nodeId"],
     },
   },
   {
@@ -247,6 +293,10 @@ export async function runAgentLoop(
 | get_book_status | 查看书的章数、字数、审计状态 |
 | read_truth_files | 读取长期记忆（状态卡、资源账本、伏笔池）和设定（世界观、卷纲、本书规则） |
 | create_book | 建书，生成世界观、卷纲、本书规则（自动加载题材 genre profile） |
+| get_branch_tree | 读取互动小说的分支树 |
+| get_branch_choices | 读取当前 active branch 的待读者选项 |
+| choose_branch | 选中一个互动分支选项 |
+| switch_branch | 切换到已有互动分支并恢复快照 |
 | plan_chapter | 先生成 chapter intent，确认本章目标/冲突/优先级 |
 | compose_chapter | 再生成 runtime context/rule stack，确认实际输入 |
 | write_draft | 写【下一章】草稿（只能续写最新章之后，不能补历史章） |
@@ -289,6 +339,7 @@ export async function runAgentLoop(
 - 用户说了书名/bookId → 直接操作，不需要先 list_books
 - 每完成一步，简要汇报进展
 - 当用户要求“先把注意力拉回某条线”时，优先 update_current_focus，然后 plan_chapter / compose_chapter，再决定是否 write_draft 或 write_full_pipeline
+- 互动小说如果当前分支在等待选择，先用 get_branch_choices / choose_branch 或 switch_branch，不要直接调用 write_draft / write_full_pipeline
 - 仿写流程：用户提供参考文本 → import_style → 生成 style_guide.md，后续写作自动参照
 - 番外流程：先 create_book 建番外书 → import_canon 导入正传正典 → 然后正常 write_draft
 - 续写流程：用户提供已有章节 → import_chapters → 然后 write_draft 续写
@@ -489,6 +540,32 @@ export async function executeAgentTool(
         }),
       );
       return JSON.stringify(books);
+    }
+
+    case "get_branch_tree": {
+      const result = await pipeline.getInteractiveBranchTree(args.bookId as string);
+      return JSON.stringify(result);
+    }
+
+    case "get_branch_choices": {
+      const result = await pipeline.listInteractiveChoices(args.bookId as string);
+      return JSON.stringify(result);
+    }
+
+    case "choose_branch": {
+      const result = await pipeline.chooseInteractiveBranch(
+        args.bookId as string,
+        args.choiceId as string,
+      );
+      return JSON.stringify(result);
+    }
+
+    case "switch_branch": {
+      const result = await pipeline.switchInteractiveBranch(
+        args.bookId as string,
+        args.nodeId as string,
+      );
+      return JSON.stringify(result);
     }
 
     case "write_full_pipeline": {
