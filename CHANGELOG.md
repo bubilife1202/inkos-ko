@@ -1,5 +1,44 @@
 # Changelog
 
+## v1.1.0
+
+写作管线全面升级。通过 Meta-Harness 方法论驱动的多轮 autoresearch 实验，从零模式质量从 75 分提升至 92 分，同人模式从 39 分提升至 82+ 分。
+
+### 新功能
+
+- **Foundation Reviewer**：建书时新增独立审核 Agent，5 维度百分制打分（原作 DNA 保留、新叙事空间、核心冲突、开篇节奏、节奏可行性），不达 80 分自动驳回并将审核意见反馈给 Architect 重新生成
+- **新时空要求**：同人模式（canon/au/ooc/cp）必须设计原创分岔点，不允许复述原作剧情。要求明确分岔点、独立核心冲突、5 章内引爆、50% 新鲜场景
+- **Hook Seed Excerpt**：伏笔回收时，Composer 从 chapter_summaries 提取原始种子场景的原文片段注入 Writer 上下文，Writer 基于具体叙事素材写回收场景，而非对着 hook ID 干猜。替代了复杂的 lifecycle pressure 系统
+- **Review Reject 回滚**：`inkos review reject` 现在回滚 state 到被拒章节之前的快照，丢弃下游章节和记忆索引，防止坏草稿污染后续生成
+- **State Validation Recovery**：state 校验失败时自动重试 settler（带 validation 反馈），仍失败则降级保存（正文保留，state 不推进），支持 `inkos write repair-state` 手动修复
+- **Audit Drift 隔离**：审计纠偏写入独立的 `audit_drift.md`，不再追加到 `current_state.md`，防止 settler 把审计元数据当叙事事实复述到正文
+- **标题坍缩修复**：检测近期标题的主题聚集（如连续 3 个标题含"盘"），尝试从章节正文提取新关键词重生标题
+- **Hook 预算提示**：活跃伏笔 ≥10 时在 Hook Agenda 中显示预算警告，引导 Writer 优先回收旧债
+- **章节结尾摘要**：Composer 提取最近 3 章的结尾句注入上下文，防止结构性重复（如连续 4 章以"被埋在废墟下"结尾）
+- **情绪/节奏检测**：long-span-fatigue 新增 mood 单调和标题聚集检测，序列级 warning 不计入修订 blockingCount
+- **同人风格提取**：`fanfic init` 和 `import chapters` 自动生成 `style_guide.md` + `style_profile.json`
+- **Governed 路径补全**：续写/同人的 `parent_canon.md` 和 `fanfic_canon.md` 现在通过 Governed 路径注入 Writer
+
+### Bug Fixes
+
+- **章节号污染修复**：叙事文本中的数字（如"第 141 号文明"、"1988 年"）不再被误解析为章节进度。章节号唯一权威来源为连续的章节文件 + index.json，markdown 数字不参与进度计算
+- **hook 排序修复**：`mustAdvance` 从降序（选最近推进的）修正为升序（选最久未推进的）
+- **Outline 匹配修复**：`findOutlineNode` 支持章节范围格式（如"Chapter 1-20"、"第 1-20 章"），防止 Chapter 1 误匹配 Chapter 10
+- **deriveGoal 优先级修正**：outline 节点优先于 current_focus，用户可通过 `## Local Override` 段显式覆盖
+- **approve 不覆盖快照**：`review approve` 不再重新 snapshot，保护 reject 回滚的目标快照
+- **style 提取 graceful degrade**：风格指纹提取失败不中断建书/导入流程
+- **LLM Headers 支持**：`INKOS_LLM_HEADERS` 环境变量注入自定义 HTTP 头（如 User-Agent），解决部分 API 提供方的 403 问题
+
+### 内部改进
+
+- Planner structured directives：arc/scene/mood/title 四维预写指令
+- Chapter cadence 统一分析模块
+- Runner 大文件拆分：chapter-state-recovery、chapter-review-cycle、chapter-persistence、chapter-truth-validation、persisted-governed-plan 独立模块
+- story-markdown 共享解析器
+- Hook agenda 独立模块（从 memory-retrieval 提取）
+
+---
+
 ## v1.0.2
 
 ### Bug Fixes
