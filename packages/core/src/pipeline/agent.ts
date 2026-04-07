@@ -288,7 +288,7 @@ export async function runAgentLoop(
 - 用户提供了题材/创意但没说要扫描市场 → 跳过 scan_market，直接 create_book
 - 用户说了书名/bookId → 直接操作，不需要先 list_books
 - 每完成一步，简要汇报进展
-- 当用户要求“先把注意力拉回某条线”时，优先 update_current_focus，然后 plan_chapter / compose_chapter，再决定是否 write_draft 或 write_full_pipeline
+- 当用户要求"先把注意力拉回某条线"时，优先 update_current_focus，然后 plan_chapter / compose_chapter，再决定是否 write_draft 或 write_full_pipeline
 - 仿写流程：用户提供参考文本 → import_style → 生成 style_guide.md，后续写作自动参照
 - 番外流程：先 create_book 建番外书 → import_canon 导入正传正典 → 然后正常 write_draft
 - 续写流程：用户提供已有章节 → import_chapters → 然后 write_draft 续写

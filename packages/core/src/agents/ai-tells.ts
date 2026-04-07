@@ -19,16 +19,18 @@ export interface AITellResult {
   readonly issues: ReadonlyArray<AITellIssue>;
 }
 
-type AITellLanguage = "zh" | "en";
+type AITellLanguage = "zh" | "en" | "ko";
 
 const HEDGE_WORDS: Record<AITellLanguage, ReadonlyArray<string>> = {
   zh: ["似乎", "可能", "或许", "大概", "某种程度上", "一定程度上", "在某种意义上"],
   en: ["seems", "seemed", "perhaps", "maybe", "apparently", "in some ways", "to some extent"],
+  ko: ["아마도", "어쩌면", "다소", "어느 정도", "혹시", "아마"],
 };
 
 const TRANSITION_WORDS: Record<AITellLanguage, ReadonlyArray<string>> = {
   zh: ["然而", "不过", "与此同时", "另一方面", "尽管如此", "话虽如此", "但值得注意的是"],
   en: ["however", "meanwhile", "on the other hand", "nevertheless", "even so", "still"],
+  ko: ["하지만", "그러나", "한편", "반면에", "그럼에도", "그런데", "그렇지만"],
 };
 
 /**
@@ -38,7 +40,8 @@ const TRANSITION_WORDS: Record<AITellLanguage, ReadonlyArray<string>> = {
 export function analyzeAITells(content: string, language: AITellLanguage = "zh"): AITellResult {
   const issues: AITellIssue[] = [];
   const isEnglish = language === "en";
-  const joiner = isEnglish ? ", " : "、";
+  const isKorean = language === "ko";
+  const joiner = isEnglish ? ", " : isKorean ? ", " : "、";
 
   const paragraphs = content
     .split(/\n\s*\n/)
@@ -56,13 +59,17 @@ export function analyzeAITells(content: string, language: AITellLanguage = "zh")
       if (cv < 0.15) {
         issues.push({
           severity: "warning",
-          category: isEnglish ? "Paragraph uniformity" : "段落等长",
+          category: isEnglish ? "Paragraph uniformity" : isKorean ? "문단 균일성" : "段落等长",
           description: isEnglish
             ? `Paragraph-length coefficient of variation is only ${cv.toFixed(3)} (threshold <0.15), which suggests unnaturally uniform paragraph sizing`
-            : `段落长度变异系数仅${cv.toFixed(3)}（阈值<0.15），段落长度过于均匀，呈现AI生成特征`,
+            : isKorean
+              ? `문단 길이 변이 계수가 ${cv.toFixed(3)}에 불과합니다(기준 <0.15). 문단 길이가 지나치게 균일하여 AI 생성 특성을 보입니다`
+              : `段落长度变异系数仅${cv.toFixed(3)}（阈值<0.15），段落长度过于均匀，呈现AI生成特征`,
           suggestion: isEnglish
             ? "Increase paragraph-length contrast: use shorter beats for impact and longer blocks for immersive detail"
-            : "增加段落长度差异：短段落用于节奏加速或冲击，长段落用于沉浸描写",
+            : isKorean
+              ? "문단 길이에 변화를 주세요: 짧은 문단으로 임팩트를, 긴 문단으로 몰입감을 만드세요"
+              : "增加段落长度差异：短段落用于节奏加速或冲击，长段落用于沉浸描写",
         });
       }
     }
@@ -81,13 +88,17 @@ export function analyzeAITells(content: string, language: AITellLanguage = "zh")
     if (hedgeDensity > 3) {
       issues.push({
         severity: "warning",
-        category: isEnglish ? "Hedge density" : "套话密度",
+        category: isEnglish ? "Hedge density" : isKorean ? "애매한 표현 밀도" : "套话密度",
         description: isEnglish
           ? `Hedge-word density is ${hedgeDensity.toFixed(1)} per 1k characters (threshold >3), making the prose sound overly tentative`
-          : `套话词（似乎/可能/或许等）密度为${hedgeDensity.toFixed(1)}次/千字（阈值>3），语气过于模糊犹豫`,
+          : isKorean
+            ? `애매한 표현(아마도/어쩌면/다소 등) 밀도가 ${hedgeDensity.toFixed(1)}회/천자(기준 >3)로, 어조가 지나치게 모호합니다`
+            : `套话词（似乎/可能/或许等）密度为${hedgeDensity.toFixed(1)}次/千字（阈值>3），语气过于模糊犹豫`,
         suggestion: isEnglish
           ? "Replace hedges with firmer narration: remove vague qualifiers and use concrete detail instead"
-          : "用确定性叙述替代模糊表达：去掉「似乎」直接描述状态，用具体细节替代「可能」",
+          : isKorean
+            ? "확정적 서술로 교체하세요: '아마도'를 삭제하고 구체적 묘사로, '어쩌면'을 단정적 표현으로 바꾸세요"
+            : "用确定性叙述替代模糊表达：去掉「似乎」直接描述状态，用具体细节替代「可能」",
       });
     }
   }
@@ -110,19 +121,23 @@ export function analyzeAITells(content: string, language: AITellLanguage = "zh")
       .join(joiner);
     issues.push({
       severity: "warning",
-      category: isEnglish ? "Formulaic transitions" : "公式化转折",
+      category: isEnglish ? "Formulaic transitions" : isKorean ? "공식적 전환어" : "公式化转折",
       description: isEnglish
         ? `Transition words repeat too often: ${detail}. Reusing the same transition pattern 3+ times creates a formulaic AI texture`
-        : `转折词重复使用：${detail}。同一转折模式≥3次暴露AI生成痕迹`,
+        : isKorean
+          ? `전환어가 과도하게 반복됩니다: ${detail}. 동일한 전환 패턴이 3회 이상 반복되면 AI 생성 흔적이 드러납니다`
+          : `转折词重复使用：${detail}。同一转折模式≥3次暴露AI生成痕迹`,
       suggestion: isEnglish
         ? "Let scenes pivot through action, timing, or viewpoint shifts instead of repeating the same transitions"
-        : "用情节自然转折替代转折词，或换用不同的过渡手法（动作切入、时间跳跃、视角切换）",
+        : isKorean
+          ? "전환어 대신 장면의 자연스러운 전환을 활용하세요 (행동 전환, 시간 점프, 시점 변경)"
+          : "用情节自然转折替代转折词，或换用不同的过渡手法（动作切入、时间跳跃、视角切换）",
     });
   }
 
   // dim 23: List-like structure (consecutive sentences with same prefix pattern)
   const sentences = content
-    .split(isEnglish ? /[.!?\n]/ : /[。！？\n]/)
+    .split(isEnglish ? /[.!?\n]/ : /[。！？.!?\n]/)
     .map((s) => s.trim())
     .filter((s) => s.length > 2);
 
@@ -146,13 +161,17 @@ export function analyzeAITells(content: string, language: AITellLanguage = "zh")
     if (maxConsecutive >= 3) {
       issues.push({
         severity: "info",
-        category: isEnglish ? "List-like structure" : "列表式结构",
+        category: isEnglish ? "List-like structure" : isKorean ? "나열식 구조" : "列表式结构",
         description: isEnglish
           ? `Detected ${maxConsecutive} consecutive sentences with the same opening pattern, creating a list-like generated cadence`
-          : `检测到${maxConsecutive}句连续以相同开头的句子，呈现列表式AI生成结构`,
+          : isKorean
+            ? `동일한 시작 패턴의 문장이 ${maxConsecutive}개 연속으로 감지되었습니다. 나열식 AI 생성 구조를 보입니다`
+            : `检测到${maxConsecutive}句连续以相同开头的句子，呈现列表式AI生成结构`,
         suggestion: isEnglish
           ? "Vary how sentences open: change subject, timing, or action entry to break the list effect"
-          : "变换句式开头：用不同主语、时间词、动作词开头，打破列表感",
+          : isKorean
+            ? "문장 시작을 다양하게 바꾸세요: 다른 주어, 시간어, 행동어로 시작하여 나열감을 깨세요"
+            : "变换句式开头：用不同主语、时间词、动作词开头，打破列表感",
       });
     }
   }

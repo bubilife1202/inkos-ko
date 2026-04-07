@@ -62,14 +62,16 @@ export function validatePostWrite(
   content: string,
   genreProfile: GenreProfile,
   bookRules: BookRules | null,
-  languageOverride?: "zh" | "en",
+  languageOverride?: "zh" | "en" | "ko",
 ): ReadonlyArray<PostWriteViolation> {
   const violations: PostWriteViolation[] = [];
 
-  // Skip Chinese-specific rules for English content
-  const isEnglish = (languageOverride ?? genreProfile.language) === "en";
-  if (isEnglish) {
-    // For English, only run book-specific prohibitions and paragraph length check
+  // Skip Chinese-specific rules for English and Korean content
+  const resolvedLang = languageOverride ?? genreProfile.language;
+  const isEnglish = resolvedLang === "en";
+  const isKorean = resolvedLang === "ko";
+  if (isEnglish || isKorean) {
+    // For English/Korean, only run book-specific prohibitions and paragraph length check
     return validatePostWriteEnglish(content, genreProfile, bookRules);
   }
 
@@ -281,12 +283,12 @@ export function validatePostWrite(
 export function detectCrossChapterRepetition(
   currentContent: string,
   recentChaptersContent: string,
-  language: "zh" | "en" = "zh",
+  language: "zh" | "en" | "ko" = "zh",
 ): ReadonlyArray<PostWriteViolation> {
   if (!recentChaptersContent || recentChaptersContent.length < 100) return [];
 
   const violations: PostWriteViolation[] = [];
-  const isEnglish = language === "en";
+  const isEnglish = language === "en" || language === "ko";
 
   if (isEnglish) {
     // Extract 3-word phrases from current chapter
@@ -345,7 +347,7 @@ export function detectCrossChapterRepetition(
 export function detectParagraphLengthDrift(
   currentContent: string,
   recentChaptersContent: string,
-  language: "zh" | "en" = "zh",
+  language: "zh" | "en" | "ko" = "zh",
 ): ReadonlyArray<PostWriteViolation> {
   if (!recentChaptersContent || recentChaptersContent.trim().length === 0) return [];
 
@@ -365,18 +367,18 @@ export function detectParagraphLengthDrift(
   const dropPercent = Math.round((1 - shrinkRatio) * 100);
 
   return [
-    language === "en"
+    language === "zh"
       ? {
-          rule: "Paragraph density drift",
-          severity: "warning",
-          description: `Average paragraph length dropped from ${Math.round(recent.averageLength)} to ${Math.round(current.averageLength)} characters (${dropPercent}% shorter) compared with recent chapters.`,
-          suggestion: "Let action, observation, and reaction share paragraphs more often instead of cutting every beat into a single short line.",
-        }
-      : {
           rule: "段落密度漂移",
           severity: "warning",
           description: `当前章平均段长从近期章节的${Math.round(recent.averageLength)}字降到${Math.round(current.averageLength)}字，缩短了${dropPercent}%。`,
           suggestion: "不要把每个动作都切成单独短句；适当把动作、观察和反应并入同一段，恢复段落层次。",
+        }
+      : {
+          rule: "Paragraph density drift",
+          severity: "warning",
+          description: `Average paragraph length dropped from ${Math.round(recent.averageLength)} to ${Math.round(current.averageLength)} characters (${dropPercent}% shorter) compared with recent chapters.`,
+          suggestion: "Let action, observation, and reaction share paragraphs more often instead of cutting every beat into a single short line.",
         },
   ];
 }
@@ -470,43 +472,43 @@ function validatePostWriteEnglish(
 function appendParagraphShapeWarnings(
   violations: PostWriteViolation[],
   content: string,
-  language: "zh" | "en",
+  language: "zh" | "en" | "ko",
 ): void {
   const shape = analyzeParagraphShape(content, language);
   if (shape.paragraphs.length < 4) return;
 
   if (shape.shortParagraphs.length >= 4 && shape.shortRatio >= 0.6) {
     violations.push(
-      language === "en"
+      language === "zh"
         ? {
-            rule: "Paragraph fragmentation",
-            severity: "warning",
-            description: `${shape.shortParagraphs.length} of ${shape.paragraphs.length} paragraphs are shorter than ${shape.shortThreshold} characters.`,
-            suggestion: "Merge adjacent action, observation, and reaction beats so the chapter does not collapse into one-line paragraphs.",
-          }
-        : {
             rule: "段落过碎",
             severity: "warning",
             description: `${shape.paragraphs.length}个段落里有${shape.shortParagraphs.length}个不足${shape.shortThreshold}字，段落被切得过碎。`,
             suggestion: "把相邻的动作、观察、反应适当并段，不要每句话都单独起段。",
+          }
+        : {
+            rule: "Paragraph fragmentation",
+            severity: "warning",
+            description: `${shape.shortParagraphs.length} of ${shape.paragraphs.length} paragraphs are shorter than ${shape.shortThreshold} characters.`,
+            suggestion: "Merge adjacent action, observation, and reaction beats so the chapter does not collapse into one-line paragraphs.",
           },
     );
   }
 
   if (shape.maxConsecutiveShort >= 3) {
     violations.push(
-      language === "en"
+      language === "zh"
         ? {
-            rule: "Consecutive short paragraphs",
-            severity: "warning",
-            description: `${shape.maxConsecutiveShort} short paragraphs appear back to back.`,
-            suggestion: "Break the one-beat-per-paragraph rhythm by folding connected beats into fuller paragraphs.",
-          }
-        : {
             rule: "连续短段",
             severity: "warning",
             description: `连续出现${shape.maxConsecutiveShort}个不足${shape.shortThreshold}字的短段，容易形成短句堆砌。`,
             suggestion: "把连续的碎动作重新编组，至少让一个段落承载完整的动作链或情绪推进。",
+          }
+        : {
+            rule: "Consecutive short paragraphs",
+            severity: "warning",
+            description: `${shape.maxConsecutiveShort} short paragraphs appear back to back.`,
+            suggestion: "Break the one-beat-per-paragraph rhythm by folding connected beats into fuller paragraphs.",
           },
     );
   }
@@ -514,7 +516,7 @@ function appendParagraphShapeWarnings(
 
 export function detectParagraphShapeWarnings(
   content: string,
-  language: "zh" | "en" = "zh",
+  language: "zh" | "en" | "ko" = "zh",
 ): ReadonlyArray<PostWriteViolation> {
   const violations: PostWriteViolation[] = [];
   appendParagraphShapeWarnings(violations, content, language);
@@ -526,11 +528,11 @@ function isDialogueParagraph(paragraph: string): boolean {
   return /^[""「『'《]/.test(trimmed) || /^[""]/.test(trimmed) || /^——/.test(trimmed);
 }
 
-function analyzeParagraphShape(content: string, language: "zh" | "en"): ParagraphShape {
+function analyzeParagraphShape(content: string, language: "zh" | "en" | "ko"): ParagraphShape {
   const paragraphs = extractParagraphs(content);
   // Exclude dialogue lines from short paragraph counting — dialogue is naturally short
   const narrativeParagraphs = paragraphs.filter((p) => !isDialogueParagraph(p));
-  const shortThreshold = language === "en" ? 120 : 35;
+  const shortThreshold = language === "zh" ? 35 : 120;
   const shortParagraphs = narrativeParagraphs.filter((paragraph) => paragraph.length < shortThreshold);
   const averageLength = paragraphs.length > 0
     ? paragraphs.reduce((sum, paragraph) => sum + paragraph.length, 0) / paragraphs.length
@@ -641,7 +643,7 @@ export function detectDuplicateTitle(
 export function resolveDuplicateTitle(
   newTitle: string,
   existingTitles: ReadonlyArray<string>,
-  language: "zh" | "en" = "zh",
+  language: "zh" | "en" | "ko" = "zh",
   options?: {
     readonly content?: string;
   },
@@ -663,9 +665,9 @@ export function resolveDuplicateTitle(
 
     let counter = 2;
     while (counter < 100) {
-      const candidate = language === "en"
-        ? `${trimmed} (${counter})`
-        : `${trimmed}（${counter}）`;
+      const candidate = language === "zh"
+        ? `${trimmed}（${counter}）`
+        : `${trimmed} (${counter})`;
       if (detectDuplicateTitle(candidate, existingTitles).length === 0) {
         return { title: candidate, issues: duplicateIssues };
       }
@@ -695,7 +697,7 @@ export function resolveDuplicateTitle(
 function detectTitleCollapse(
   newTitle: string,
   existingTitles: ReadonlyArray<string>,
-  language: "zh" | "en",
+  language: "zh" | "en" | "ko",
 ): ReadonlyArray<PostWriteViolation> {
   const recentTitles = existingTitles
     .map((title) => title.trim())
@@ -723,18 +725,18 @@ function detectTitleCollapse(
   }
 
   return [
-    language === "en"
+    language === "zh"
       ? {
           rule: "title-collapse",
           severity: "warning",
-          description: `Chapter title "${newTitle}" keeps leaning on the recent "${titlePressure.repeatedToken}" title shell.`,
-          suggestion: "Rename the chapter around a new image, action, consequence, or character focus.",
+          description: `章节标题"${newTitle}"仍在沿用近期围绕"${titlePressure.repeatedToken}"的命名壳。`,
+          suggestion: "换一个新的意象、动作、后果或人物焦点来命名。",
         }
       : {
           rule: "title-collapse",
           severity: "warning",
-          description: `章节标题"${newTitle}"仍在沿用近期围绕“${titlePressure.repeatedToken}”的命名壳。`,
-          suggestion: "换一个新的意象、动作、后果或人物焦点来命名。",
+          description: `Chapter title "${newTitle}" keeps leaning on the recent "${titlePressure.repeatedToken}" title shell.`,
+          suggestion: "Rename the chapter around a new image, action, consequence, or character focus.",
         },
   ];
 }
@@ -742,38 +744,38 @@ function detectTitleCollapse(
 function regenerateDuplicateTitle(
   baseTitle: string,
   existingTitles: ReadonlyArray<string>,
-  language: "zh" | "en",
+  language: "zh" | "en" | "ko",
   content?: string,
 ): string | undefined {
   if (!content || !content.trim()) {
     return undefined;
   }
 
-  const qualifier = language === "en"
-    ? extractEnglishTitleQualifier(baseTitle, existingTitles, content)
-    : extractChineseTitleQualifier(baseTitle, existingTitles, content);
+  const qualifier = language === "zh"
+    ? extractChineseTitleQualifier(baseTitle, existingTitles, content)
+    : extractEnglishTitleQualifier(baseTitle, existingTitles, content);
   if (!qualifier) {
     return undefined;
   }
 
-  return language === "en"
-    ? `${baseTitle}: ${qualifier}`
-    : `${baseTitle}：${qualifier}`;
+  return language === "zh"
+    ? `${baseTitle}：${qualifier}`
+    : `${baseTitle}: ${qualifier}`;
 }
 
 function regenerateCollapsedTitle(
   baseTitle: string,
   existingTitles: ReadonlyArray<string>,
-  language: "zh" | "en",
+  language: "zh" | "en" | "ko",
   content?: string,
 ): string | undefined {
   if (!content || !content.trim()) {
     return undefined;
   }
 
-  const fresh = language === "en"
-    ? extractEnglishTitleQualifier(baseTitle, existingTitles, content)
-    : extractChineseTitleQualifier(baseTitle, existingTitles, content);
+  const fresh = language === "zh"
+    ? extractChineseTitleQualifier(baseTitle, existingTitles, content)
+    : extractEnglishTitleQualifier(baseTitle, existingTitles, content);
   if (!fresh) {
     return undefined;
   }

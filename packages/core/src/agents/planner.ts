@@ -146,7 +146,7 @@ export class PlannerAgent extends BaseAgent {
       .sort((left, right) => left.chapter - right.chapter)
       .slice(-4);
     const cadence = analyzeChapterCadence({
-      language: this.isChineseLanguage(input.language) ? "zh" : "en",
+      language: this.isKoreanLanguage(input.language) ? "ko" : this.isChineseLanguage(input.language) ? "zh" : "en",
       rows: recentSummaries.map((summary) => ({
         chapter: summary.chapter,
         title: summary.title,
@@ -341,6 +341,9 @@ export class PlannerAgent extends BaseAgent {
       return undefined;
     }
 
+    if (this.isKoreanLanguage(language)) {
+      return "아웃라인 fallback에 계속 의존하지 마세요. 본 회차를 새로운 서사 비트나 장소 변화로 밀어붙이세요.";
+    }
     return this.isChineseLanguage(language)
       ? "不要继续依赖卷纲的 fallback 指令，必须把本章推进到新的弧线节点或地点变化。"
       : "Do not keep leaning on the outline fallback. Force this chapter toward a fresh arc beat or location change.";
@@ -355,8 +358,11 @@ export class PlannerAgent extends BaseAgent {
     }
     const repeatedType = cadence.scenePressure.repeatedType;
 
+    if (this.isKoreanLanguage(language)) {
+      return `최근 회차가 "${repeatedType}" 비트에 계속 머물고 있습니다. 본 회차에서 장면 구성, 장소, 또는 행동 패턴을 반드시 바꾸세요.`;
+    }
     return this.isChineseLanguage(language)
-      ? `最近章节连续停留在“${repeatedType}”，本章必须更换场景容器、地点或行动方式。`
+      ? `最近章节连续停留在"${repeatedType}"，本章必须更换场景容器、地点或行动方式。`
       : `Recent chapters are stuck in repeated ${repeatedType} beats. Change the scene container, location, or action pattern this chapter.`;
   }
 
@@ -369,6 +375,9 @@ export class PlannerAgent extends BaseAgent {
     }
     const moods = cadence.moodPressure.recentMoods;
 
+    if (this.isKoreanLanguage(language)) {
+      return `최근 ${moods.length}화가 계속 고조된 감정(${moods.slice(0, 3).join("·")})을 유지하고 있습니다. 본 회차는 반드시 톤을 낮추세요 — 일상/휴식/따뜻함/유머 장면을 배치하여 독자에게 숨 쉴 여유를 주세요.`;
+    }
     return this.isChineseLanguage(language)
       ? `最近${moods.length}章情绪持续高压（${moods.slice(0, 3).join("、")}），本章必须降调——安排日常/喘息/温情/幽默场景，让读者呼吸。`
       : `The last ${moods.length} chapters have been relentlessly tense (${moods.slice(0, 3).join(", ")}). This chapter must downshift — write a quieter scene with warmth, humor, or breathing room.`;
@@ -383,22 +392,33 @@ export class PlannerAgent extends BaseAgent {
     }
     const repeatedToken = cadence.titlePressure.repeatedToken;
 
+    if (this.isKoreanLanguage(language)) {
+      return `"${repeatedToken}" 중심의 제목을 다시 쓰지 마세요. 본 회차 제목에 새로운 이미지나 액션 포커스를 선택하세요.`;
+    }
     return this.isChineseLanguage(language)
-      ? `标题不要再围绕“${repeatedToken}”重复命名，换一个新的意象或动作焦点。`
+      ? `标题不要再围绕"${repeatedToken}"重复命名，换一个新的意象或动作焦点。`
       : `Avoid another ${repeatedToken}-centric title. Pick a new image or action focus for this chapter title.`;
   }
 
-  private renderHookBudget(activeCount: number, language: "zh" | "en"): string {
+  private renderHookBudget(activeCount: number, language: "zh" | "en" | "ko"): string {
     const cap = 12;
     if (activeCount < 10) {
-      return language === "en"
-        ? `### Hook Budget\n- ${activeCount} active hooks (capacity: ${cap})`
-        : `### 伏笔预算\n- 当前 ${activeCount} 条活跃伏笔（容量：${cap}）`;
+      if (language === "en") {
+        return `### Hook Budget\n- ${activeCount} active hooks (capacity: ${cap})`;
+      }
+      if (language === "ko") {
+        return `### 복선 예산\n- 현재 활성 복선 ${activeCount}개 (용량: ${cap})`;
+      }
+      return `### 伏笔预算\n- 当前 ${activeCount} 条活跃伏笔（容量：${cap}）`;
     }
     const remaining = Math.max(0, cap - activeCount);
-    return language === "en"
-      ? `### Hook Budget\n- ${activeCount} active hooks — approaching capacity (${cap}). Only ${remaining} new hook(s) allowed. Prioritize resolving existing debt over opening new threads.`
-      : `### 伏笔预算\n- 当前 ${activeCount} 条活跃伏笔——接近容量上限（${cap}）。仅剩 ${remaining} 个新坑位。优先回收旧债，不要轻易开新线。`;
+    if (language === "en") {
+      return `### Hook Budget\n- ${activeCount} active hooks — approaching capacity (${cap}). Only ${remaining} new hook(s) allowed. Prioritize resolving existing debt over opening new threads.`;
+    }
+    if (language === "ko") {
+      return `### 복선 예산\n- 현재 활성 복선 ${activeCount}개 — 용량 상한(${cap})에 근접. 새 복선은 ${remaining}개만 허용. 신규 서사선보다 기존 부채 회수를 우선하세요.`;
+    }
+    return `### 伏笔预算\n- 当前 ${activeCount} 条活跃伏笔——接近容量上限（${cap}）。仅剩 ${remaining} 个新坑位。优先回收旧债，不要轻易开新线。`;
   }
 
   private extractSection(content: string, headings: ReadonlyArray<string>): string | undefined {
@@ -640,7 +660,7 @@ export class PlannerAgent extends BaseAgent {
 
   private renderIntentMarkdown(
     intent: ChapterIntent,
-    language: "zh" | "en",
+    language: "zh" | "en" | "ko",
     pendingHooks: string,
     chapterSummaries: string,
     activeHookCount: number,
@@ -732,6 +752,10 @@ export class PlannerAgent extends BaseAgent {
 
   private isChineseLanguage(language: string | undefined): boolean {
     return (language ?? "zh").toLowerCase().startsWith("zh");
+  }
+
+  private isKoreanLanguage(language: string | undefined): boolean {
+    return (language ?? "zh").toLowerCase().startsWith("ko");
   }
 
   private async readFileOrDefault(path: string): Promise<string> {

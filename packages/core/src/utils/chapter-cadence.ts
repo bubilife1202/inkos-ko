@@ -44,6 +44,8 @@ const HIGH_TENSION_KEYWORDS = [
   "克制", "危机", "对峙", "绷紧", "僵持", "杀意",
   "tense", "cold", "oppressive", "grim", "ominous", "dark",
   "bleak", "hostile", "threatening", "heavy", "suffocating",
+  "긴장", "살기", "위기", "대치", "살벌", "압도적",
+  "숨막히는", "냉혹", "암울", "처절", "절박", "위압",
 ];
 
 const ENGLISH_STOP_WORDS = new Set([
@@ -53,7 +55,7 @@ const ENGLISH_STOP_WORDS = new Set([
 
 export function analyzeChapterCadence(params: {
   readonly rows: ReadonlyArray<CadenceSummaryRow>;
-  readonly language: "zh" | "en";
+  readonly language: "zh" | "en" | "ko";
 }): ChapterCadenceAnalysis {
   const recentRows = [...params.rows]
     .sort((left, right) => left.chapter - right.chapter)
@@ -142,7 +144,7 @@ function analyzeMoodPressure(
 
 function analyzeTitlePressure(
   rows: ReadonlyArray<CadenceSummaryRow>,
-  language: "zh" | "en",
+  language: "zh" | "en" | "ko",
 ): TitleCadencePressure | undefined {
   const titles = rows
     .map((row) => row.title.trim())
@@ -179,7 +181,7 @@ function analyzeTitlePressure(
   return undefined;
 }
 
-function extractTitleTokens(title: string, language: "zh" | "en"): string[] {
+function extractTitleTokens(title: string, language: "zh" | "en" | "ko"): string[] {
   if (language === "en") {
     const words = title.match(/[a-z]{4,}/gi) ?? [];
     return [...new Set(
@@ -187,6 +189,19 @@ function extractTitleTokens(title: string, language: "zh" | "en"): string[] {
         .map((word) => word.toLowerCase())
         .filter((word) => !ENGLISH_STOP_WORDS.has(word)),
     )];
+  }
+
+  if (language === "ko") {
+    const segments = title.match(/[\uAC00-\uD7AF]{2,}/g) ?? [];
+    const tokens = new Set<string>();
+    for (const segment of segments) {
+      for (let size = 2; size <= Math.min(4, segment.length); size += 1) {
+        for (let index = 0; index <= segment.length - size; index += 1) {
+          tokens.add(segment.slice(index, index + size));
+        }
+      }
+    }
+    return [...tokens];
   }
 
   const segments = title.match(/[\u4e00-\u9fff]{2,}/g) ?? [];

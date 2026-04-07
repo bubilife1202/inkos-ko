@@ -28,7 +28,7 @@ export interface AuditIssue {
   readonly suggestion: string;
 }
 
-type PromptLanguage = "zh" | "en";
+type PromptLanguage = "zh" | "en" | "ko";
 
 const DIMENSION_LABELS: Record<number, { readonly zh: string; readonly en: string }> = {
   1: { zh: "OOC检查", en: "OOC Check" },
@@ -87,7 +87,11 @@ function resolveGenreLabel(genreId: string, profileName: string, language: Promp
 }
 
 function dimensionName(id: number, language: PromptLanguage): string | undefined {
-  return DIMENSION_LABELS[id]?.[language];
+  const entry = DIMENSION_LABELS[id];
+  if (!entry) return undefined;
+  // Korean falls back to English labels for dimension names
+  const key: "zh" | "en" = language === "ko" ? "en" : language;
+  return entry[key];
 }
 
 function joinLocalized(items: ReadonlyArray<string>, language: PromptLanguage): string {

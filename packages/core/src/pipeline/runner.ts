@@ -183,7 +183,7 @@ export class PipelineRunner {
   }
 
   private localize(language: LengthLanguage, messages: { zh: string; en: string }): string {
-    return language === "en" ? messages.en : messages.zh;
+    return language === "zh" ? messages.zh : messages.en;
   }
 
   private async resolveBookLanguage(
@@ -211,7 +211,9 @@ export class PipelineRunner {
   }
 
   private languageFromLengthSpec(lengthSpec: Pick<LengthSpec, "countingMode">): LengthLanguage {
-    return lengthSpec.countingMode === "en_words" ? "en" : "zh";
+    if (lengthSpec.countingMode === "en_words") return "en";
+    if (lengthSpec.countingMode === "ko_chars") return "ko";
+    return "zh";
   }
 
   private logStage(language: LengthLanguage, message: { zh: string; en: string }): void {
@@ -252,7 +254,7 @@ export class PipelineRunner {
     readonly mode: "original" | "fanfic" | "series";
     readonly sourceCanon?: string;
     readonly styleGuide?: string;
-    readonly language: "zh" | "en";
+    readonly language: "zh" | "en" | "ko";
     readonly stageLanguage: LengthLanguage;
     readonly maxRetries?: number;
   }): Promise<ArchitectOutput> {
@@ -316,30 +318,30 @@ export class PipelineRunner {
       }>;
       readonly overallFeedback: string;
     },
-    language: "zh" | "en",
+    language: "zh" | "en" | "ko",
   ): string {
     const dimensionLines = review.dimensions
       .map((dimension) => (
-        language === "en"
-          ? `- ${dimension.name} [${dimension.score}]: ${dimension.feedback}`
-          : `- ${dimension.name}（${dimension.score}分）：${dimension.feedback}`
+        language === "zh"
+          ? `- ${dimension.name}（${dimension.score}分）：${dimension.feedback}`
+          : `- ${dimension.name} [${dimension.score}]: ${dimension.feedback}`
       ))
       .join("\n");
 
-    return language === "en"
+    return language === "zh"
       ? [
-          "## Overall Feedback",
-          review.overallFeedback,
-          "",
-          "## Dimension Notes",
-          dimensionLines || "- none",
-        ].join("\n")
-      : [
           "## 总评",
           review.overallFeedback,
           "",
           "## 分项问题",
           dimensionLines || "- 无",
+        ].join("\n")
+      : [
+          "## Overall Feedback",
+          review.overallFeedback,
+          "",
+          "## Dimension Notes",
+          dimensionLines || "- none",
         ].join("\n");
   }
 
@@ -2102,54 +2104,54 @@ ${matrix}`,
   }
 
   private buildImportReplayStateSeed(language: LengthLanguage): string {
-    if (language === "en") {
+    if (language === "zh") {
       return [
-        "# Current State",
+        "# 当前状态",
         "",
-        "| Field | Value |",
+        "| 字段 | 值 |",
         "| --- | --- |",
-        "| Current Chapter | 0 |",
-        "| Current Location | (not set) |",
-        "| Protagonist State | (not set) |",
-        "| Current Goal | (not set) |",
-        "| Current Constraint | (not set) |",
-        "| Current Alliances | (not set) |",
-        "| Current Conflict | (not set) |",
+        "| 当前章节 | 0 |",
+        "| 当前位置 | （未设定） |",
+        "| 主角状态 | （未设定） |",
+        "| 当前目标 | （未设定） |",
+        "| 当前限制 | （未设定） |",
+        "| 当前敌我 | （未设定） |",
+        "| 当前冲突 | （未设定） |",
         "",
       ].join("\n");
     }
 
     return [
-      "# 当前状态",
+      "# Current State",
       "",
-      "| 字段 | 值 |",
+      "| Field | Value |",
       "| --- | --- |",
-      "| 当前章节 | 0 |",
-      "| 当前位置 | （未设定） |",
-      "| 主角状态 | （未设定） |",
-      "| 当前目标 | （未设定） |",
-      "| 当前限制 | （未设定） |",
-      "| 当前敌我 | （未设定） |",
-      "| 当前冲突 | （未设定） |",
+      "| Current Chapter | 0 |",
+      "| Current Location | (not set) |",
+      "| Protagonist State | (not set) |",
+      "| Current Goal | (not set) |",
+      "| Current Constraint | (not set) |",
+      "| Current Alliances | (not set) |",
+      "| Current Conflict | (not set) |",
       "",
     ].join("\n");
   }
 
   private buildImportReplayHooksSeed(language: LengthLanguage): string {
-    if (language === "en") {
+    if (language === "zh") {
       return [
-        "# Pending Hooks",
+        "# 伏笔池",
         "",
-        "| hook_id | start_chapter | type | status | last_advanced_chapter | expected_payoff | notes |",
+        "| hook_id | 起始章节 | 类型 | 状态 | 最近推进 | 预期回收 | 备注 |",
         "| --- | --- | --- | --- | --- | --- | --- |",
         "",
       ].join("\n");
     }
 
     return [
-      "# 伏笔池",
+      "# Pending Hooks",
       "",
-      "| hook_id | 起始章节 | 类型 | 状态 | 最近推进 | 预期回收 | 备注 |",
+      "| hook_id | start_chapter | type | status | last_advanced_chapter | expected_payoff | notes |",
       "| --- | --- | --- | --- | --- | --- | --- |",
       "",
     ].join("\n");

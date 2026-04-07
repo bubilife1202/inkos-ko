@@ -294,7 +294,7 @@ export function ChatPanel({ open, onClose, t, sse, activeBookId }: {
           content:
             target.reason === "missing"
               ? (isZh ? "✗ 还没有书，先创建一本再写。" : "✗ No books yet. Create one first.")
-              : (isZh ? "✗ 当前有多本书，请先打开目标书籍后再执行“写下一章”。" : '✗ Multiple books found. Open the target book first, then run "write next".'),
+              : (isZh ? `✗ 当前有多本书，请先打开目标书籍后再执行"写下一章"。` : '✗ Multiple books found. Open the target book first, then run "write next".'),
           timestamp: Date.now(),
         }]);
         return;

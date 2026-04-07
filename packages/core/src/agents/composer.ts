@@ -110,7 +110,7 @@ export class ComposerAgent extends BaseAgent {
   private async collectSelectedContext(
     storyDir: string,
     plan: PlanChapterOutput,
-    language: "zh" | "en",
+    language: "zh" | "en" | "ko",
   ): Promise<ContextPackage["selectedContext"]> {
     const entries = await Promise.all([
       this.maybeContextSource(storyDir, "current_focus.md", "Current task focus for this chapter."),
@@ -305,7 +305,7 @@ export class ComposerAgent extends BaseAgent {
       readonly payoffTiming?: string;
       readonly notes: string;
     }>,
-    language: "zh" | "en",
+    language: "zh" | "en" | "ko",
   ): Promise<ContextPackage["selectedContext"]> {
     const targetHookIds = [
       ...new Set([
@@ -332,7 +332,7 @@ export class ComposerAgent extends BaseAgent {
       const seedSummary = this.findHookSummary(summaries, hook.hookId, hook.startChapter, "seed");
       const latestSummary = this.findHookSummary(summaries, hook.hookId, hook.lastAdvancedChapter, "latest");
       const role = this.describeHookAgendaRole(plan, hook.hookId, language);
-      const promise = hook.expectedPayoff || (language === "en" ? "(unspecified)" : "（未写明）");
+      const promise = hook.expectedPayoff || (language === "zh" ? "（未写明）" : "(unspecified)");
       const seedBeat = seedSummary
         ? this.renderHookDebtBeat(seedSummary)
         : (hook.notes || promise);
@@ -343,21 +343,21 @@ export class ComposerAgent extends BaseAgent {
 
       return [{
         source: `runtime/hook_debt#${hook.hookId}`,
-        reason: language === "en"
-          ? "Narrative debt brief with original seed text for this hook agenda target."
-          : "含原始种子文本的叙事债务简报。",
-        excerpt: language === "en"
+        reason: language === "zh"
+          ? "含原始种子文本的叙事债务简报。"
+          : "Narrative debt brief with original seed text for this hook agenda target.",
+        excerpt: language === "zh"
           ? [
-              `${hook.hookId} (${hook.type}, ${role}, open ${age} chapters)`,
-              `reader promise: ${promise}`,
-              `original seed (ch${hook.startChapter}): ${seedBeat}`,
-              latestBeat ? `latest turn (ch${hook.lastAdvancedChapter}): ${latestBeat}` : undefined,
-            ].filter(Boolean).join(" | ")
-          : [
               `${hook.hookId}（${hook.type}，${role}，已开${age}章）`,
               `读者承诺：${promise}`,
               `种于第${hook.startChapter}章：${seedBeat}`,
               latestBeat ? `推进于第${hook.lastAdvancedChapter}章：${latestBeat}` : undefined,
+            ].filter(Boolean).join(" | ")
+          : [
+              `${hook.hookId} (${hook.type}, ${role}, open ${age} chapters)`,
+              `reader promise: ${promise}`,
+              `original seed (ch${hook.startChapter}): ${seedBeat}`,
+              latestBeat ? `latest turn (ch${hook.lastAdvancedChapter}): ${latestBeat}` : undefined,
             ].filter(Boolean).join(" | "),
       }];
     });
@@ -411,15 +411,15 @@ export class ComposerAgent extends BaseAgent {
   private describeHookAgendaRole(
     plan: PlanChapterOutput,
     hookId: string,
-    language: "zh" | "en",
+    language: "zh" | "en" | "ko",
   ): string {
     if (plan.intent.hookAgenda.eligibleResolve.includes(hookId)) {
-      return language === "en" ? "payoff-ready debt" : "可兑现旧债";
+      return language === "zh" ? "可兑现旧债" : "payoff-ready debt";
     }
     if (plan.intent.hookAgenda.staleDebt.includes(hookId)) {
-      return language === "en" ? "high-pressure debt" : "高压旧债";
+      return language === "zh" ? "高压旧债" : "high-pressure debt";
     }
-    return language === "en" ? "mainline debt" : "主要旧债";
+    return language === "zh" ? "主要旧债" : "mainline debt";
   }
 
   private findHookSummary(

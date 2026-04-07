@@ -14,7 +14,7 @@ export function buildPlannerHookAgenda(params: {
   readonly hooks: ReadonlyArray<StoredHook>;
   readonly chapterNumber: number;
   readonly targetChapters?: number;
-  readonly language?: "zh" | "en";
+  readonly language?: "zh" | "en" | "ko";
   readonly maxMustAdvance?: number;
   readonly maxEligibleResolve?: number;
   readonly maxStaleDebt?: number;

@@ -1185,9 +1185,9 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
       genre: (body.genre ?? "other") as "xuanhuan",
       status: "outlining" as const,
       targetChapters: body.targetChapters ?? 100,
-      chapterWordCount: body.chapterWordCount ?? 3000,
+      chapterWordCount: body.chapterWordCount ?? (body.language === "ko" ? 4500 : 3000),
       fanficMode: (body.mode ?? "canon") as "canon",
-      ...(body.language ? { language: body.language as "zh" | "en" } : {}),
+      ...(body.language ? { language: body.language as "zh" | "en" | "ko" } : {}),
       createdAt: now,
       updatedAt: now,
     };

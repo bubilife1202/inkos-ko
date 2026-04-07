@@ -103,15 +103,15 @@ export class WriterAgent extends BaseAgent {
     return "writer";
   }
 
-  private localize(language: "zh" | "en", messages: { zh: string; en: string }): string {
-    return language === "en" ? messages.en : messages.zh;
+  private localize(language: "zh" | "en" | "ko", messages: { zh: string; en: string }): string {
+    return language === "zh" ? messages.zh : messages.en;
   }
 
-  private logInfo(language: "zh" | "en", messages: { zh: string; en: string }): void {
+  private logInfo(language: "zh" | "en" | "ko", messages: { zh: string; en: string }): void {
     this.ctx.logger?.info(this.localize(language, messages));
   }
 
-  private logWarn(language: "zh" | "en", messages: { zh: string; en: string }): void {
+  private logWarn(language: "zh" | "en" | "ko", messages: { zh: string; en: string }): void {
     this.ctx.logger?.warn(this.localize(language, messages));
   }
 
@@ -642,7 +642,7 @@ export class WriterAgent extends BaseAgent {
     bookDir: string,
     output: WriteChapterOutput,
     numericalSystem: boolean = true,
-    language: "zh" | "en" = "zh",
+    language: "zh" | "en" | "ko" = "zh",
   ): Promise<void> {
     const chaptersDir = join(bookDir, "chapters");
     const storyDir = join(bookDir, "story");
@@ -651,9 +651,11 @@ export class WriterAgent extends BaseAgent {
     const paddedNum = String(output.chapterNumber).padStart(4, "0");
     const filename = `${paddedNum}_${this.sanitizeFilename(output.title)}.md`;
 
-    const heading = language === "en"
-      ? `# Chapter ${output.chapterNumber}: ${output.title}`
-      : `# 第${output.chapterNumber}章 ${output.title}`;
+    const heading = language === "zh"
+      ? `# 第${output.chapterNumber}章 ${output.title}`
+      : language === "ko"
+        ? `# ${output.chapterNumber}화 ${output.title}`
+        : `# Chapter ${output.chapterNumber}: ${output.title}`;
     const chapterContent = [
       heading,
       "",
@@ -707,7 +709,7 @@ export class WriterAgent extends BaseAgent {
     readonly dialogueFingerprints?: string;
     readonly relevantSummaries?: string;
     readonly parentCanon?: string;
-    readonly language?: "zh" | "en";
+    readonly language?: "zh" | "en" | "ko";
   }): string {
     const contextBlock = params.externalContext
       ? `\n## 外部指令\n以下是来自外部系统的创作指令，请在本章中融入：\n\n${params.externalContext}\n`
@@ -748,7 +750,7 @@ ${params.parentCanon}\n`
       : "";
     const lengthRequirementBlock = this.buildLengthRequirementBlock(params.lengthSpec, params.language ?? "zh");
 
-    if (params.language === "en") {
+    if (params.language !== "zh") {
       return `Write chapter ${params.chapterNumber}.
 ${contextBlock}
 ## Current State
@@ -812,7 +814,7 @@ ${lengthRequirementBlock}
     readonly ruleStack: RuleStack;
     readonly trace?: ChapterTrace;
     readonly lengthSpec: LengthSpec;
-    readonly language?: "zh" | "en";
+    readonly language?: "zh" | "en" | "ko";
     readonly varianceBrief?: string;
     readonly selectedEvidenceBlock?: string;
   }): string {
@@ -846,12 +848,12 @@ ${lengthRequirementBlock}
       : "";
     const explicitHookAgenda = this.extractMarkdownSection(params.chapterIntent, "## Hook Agenda");
     const hookAgendaBlock = explicitHookAgenda
-      ? params.language === "en"
-        ? `\n## Explicit Hook Agenda\n${explicitHookAgenda}\n`
-        : `\n## 显式 Hook Agenda\n${explicitHookAgenda}\n`
+      ? params.language === "zh"
+        ? `\n## 显式 Hook Agenda\n${explicitHookAgenda}\n`
+        : `\n## Explicit Hook Agenda\n${explicitHookAgenda}\n`
       : "";
 
-    if (params.language === "en") {
+    if (params.language !== "zh") {
       return `Write chapter ${params.chapterNumber}.
 
 ## Chapter Intent
@@ -953,7 +955,7 @@ ${lengthRequirementBlock}
     chapterIntent: string,
     contextPackage: ContextPackage,
     ruleStack: RuleStack,
-    language: "zh" | "en",
+    language: "zh" | "en" | "ko",
   ): string {
     const selectedContext = contextPackage.selectedContext
       .map((entry) => `- ${entry.source}: ${entry.reason}${entry.excerpt ? ` | ${entry.excerpt}` : ""}`)
@@ -964,7 +966,7 @@ ${lengthRequirementBlock}
         .join("\n")
       : "- none";
 
-    if (language === "en") {
+    if (language !== "zh") {
       return `\n## Chapter Control Inputs
 ${chapterIntent}
 
@@ -995,7 +997,13 @@ ${selectedContext || "- none"}
 ${overrides}\n`;
   }
 
-  private buildLengthRequirementBlock(lengthSpec: LengthSpec, language: "zh" | "en"): string {
+  private buildLengthRequirementBlock(lengthSpec: LengthSpec, language: "zh" | "en" | "ko"): string {
+    if (language === "ko") {
+      return `요구사항:
+- 목표 글자수: ${lengthSpec.target}자
+- 허용 범위: ${lengthSpec.softMin}-${lengthSpec.softMax}자`;
+    }
+
     if (language === "en") {
       return `Requirements:
 - Target length: ${lengthSpec.target} words
@@ -1047,7 +1055,7 @@ ${overrides}\n`;
   async saveNewTruthFiles(
     bookDir: string,
     output: WriteChapterOutput,
-    language: "zh" | "en" = "zh",
+    language: "zh" | "en" | "ko" = "zh",
   ): Promise<void> {
     const storyDir = join(bookDir, "story");
     const writes: Array<Promise<void>> = [];
@@ -1151,7 +1159,7 @@ ${overrides}\n`;
   private async buildRuntimeStateArtifactsIfPresent(
     bookDir: string,
     delta: RuntimeStateDelta | undefined,
-    language: "zh" | "en",
+    language: "zh" | "en" | "ko",
     authoritativeChapterNumber?: number,
     allowReapply?: boolean,
   ): Promise<RuntimeStateArtifacts | null> {
@@ -1170,7 +1178,7 @@ ${overrides}\n`;
   private async resolveRuntimeStateArtifactsForOutput(
     bookDir: string,
     output: WriteChapterOutput,
-    language: "zh" | "en",
+    language: "zh" | "en" | "ko",
   ): Promise<RuntimeStateArtifacts | null> {
     if (!output.runtimeStateDelta) return null;
     const safeDelta = this.normalizeRuntimeStateDeltaChapter(
@@ -1203,7 +1211,7 @@ ${overrides}\n`;
   private async appendChapterSummary(
     storyDir: string,
     summary: string,
-    language: "zh" | "en",
+    language: "zh" | "en" | "ko",
   ): Promise<void> {
     const summaryPath = join(storyDir, "chapter_summaries.md");
     let existing = "";
@@ -1211,9 +1219,9 @@ ${overrides}\n`;
       existing = await readFile(summaryPath, "utf-8");
     } catch {
       // File doesn't exist yet — start with header
-      existing = language === "en"
-        ? "# Chapter Summaries\n\n| Chapter | Title | Characters | Key Events | State Changes | Hook Activity | Mood | Chapter Type |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n"
-        : "# 章节摘要\n\n| 章节 | 标题 | 出场人物 | 关键事件 | 状态变化 | 伏笔动态 | 情绪基调 | 章节类型 |\n|------|------|----------|----------|----------|----------|----------|----------|\n";
+      existing = language === "zh"
+        ? "# 章节摘要\n\n| 章节 | 标题 | 出场人物 | 关键事件 | 状态变化 | 伏笔动态 | 情绪基调 | 章节类型 |\n|------|------|----------|----------|----------|----------|----------|----------|\n"
+        : "# Chapter Summaries\n\n| Chapter | Title | Characters | Key Events | State Changes | Hook Activity | Mood | Chapter Type |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n";
     }
 
     // Extract only the data row(s) from the summary (skip header lines)

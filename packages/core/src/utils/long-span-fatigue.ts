@@ -18,7 +18,7 @@ export interface AnalyzeLongSpanFatigueInput {
   readonly chapterNumber: number;
   readonly chapterContent: string;
   readonly chapterSummary?: string;
-  readonly language?: "zh" | "en";
+  readonly language?: "zh" | "en" | "ko";
 }
 
 export interface EnglishVarianceBrief {
@@ -36,7 +36,9 @@ interface SummaryRow {
   readonly chapterType: string;
 }
 
-const CHINESE_PUNCTUATION = /[，。！？；：“”‘’（）《》、\s\-—…·]/g;
+const CHINESE_PUNCTUATION = /[，。！？；：""''（）《》、\s\-—…·]/g;
+const KOREAN_PUNCTUATION = /[，。！？；：""''（）《》、\s\-—…·.,!?;:'"()~\u2026\u2014\u2015\u00B7]/g;
+const KOREAN_STOP_PARTICLES = /(?:까지|부터|에게|한테|께서|조차|마저|나마|라도|에서|으로|이나|는|은|이|가|을|를|의|에|도|로|와|과|만)(?=\s|$)/g;
 const ENGLISH_PUNCTUATION = /[^a-z0-9]+/gi;
 
 export async function buildEnglishVarianceBrief(params: {
@@ -181,7 +183,7 @@ function mergeCurrentSummary(rows: ReadonlyArray<SummaryRow>, currentSummary?: s
 
 function parseSummaryRow(line: string): SummaryRow | null {
   const trimmed = line.trim();
-  if (!trimmed.startsWith("|") || trimmed.includes("章节 |") || trimmed.includes("Chapter |") || trimmed.includes("---")) {
+  if (!trimmed.startsWith("|") || trimmed.includes("章节 |") || trimmed.includes("Chapter |") || trimmed.includes("회차 |") || trimmed.includes("---")) {
     return null;
   }
 
@@ -208,7 +210,7 @@ function parseSummaryRow(line: string): SummaryRow | null {
 
 function buildChapterTypeIssue(
   cadence: ReturnType<typeof analyzeChapterCadence>,
-  language: "zh" | "en",
+  language: "zh" | "en" | "ko",
 ): LongSpanFatigueIssue | null {
   if (cadence.scenePressure?.pressure !== "high") {
     return null;
@@ -224,17 +226,26 @@ function buildChapterTypeIssue(
     };
   }
 
+  if (language === "ko") {
+    return {
+      severity: "warning",
+      category: "리듬 단조로움",
+      description: `최근 ${streak}장의 장 유형이 "${repeatedType}"에 머물러 있어 장편 리듬이 고착될 수 있습니다.`,
+      suggestion: "다음 장은 장 기능을 전환하세요. 같은 유형의 비트를 연속 반복하지 마세요.",
+    };
+  }
+
   return {
     severity: "warning",
     category: "节奏单调",
-    description: `最近${streak}章章节类型持续停留在“${repeatedType}”，长篇节奏可能开始固化。`,
+    description: `最近${streak}章章节类型持续停留在"${repeatedType}"，长篇节奏可能开始固化。`,
     suggestion: "下一章应切换章节功能，不要连续重复同一种布局/推进节拍。",
   };
 }
 
 function buildMoodIssue(
   cadence: ReturnType<typeof analyzeChapterCadence>,
-  language: "zh" | "en",
+  language: "zh" | "en" | "ko",
 ): LongSpanFatigueIssue | null {
   if (cadence.moodPressure?.pressure !== "high") {
     return null;
@@ -250,6 +261,15 @@ function buildMoodIssue(
     };
   }
 
+  if (language === "ko") {
+    return {
+      severity: "warning",
+      category: "감정 단조로움",
+      description: `최근 ${highTensionStreak}장이 고긴장 분위기를 유지 중입니다(${recentMoods.join(" -> ")}). 감정 해소가 보이지 않습니다.`,
+      suggestion: "다음 장에서 한숨 돌리기, 온기, 유머, 또는 고요한 성찰 장면을 배치한 후 다시 긴장을 높이세요.",
+    };
+  }
+
   return {
     severity: "warning",
     category: "情绪单调",
@@ -260,7 +280,7 @@ function buildMoodIssue(
 
 function buildTitleIssue(
   cadence: ReturnType<typeof analyzeChapterCadence>,
-  language: "zh" | "en",
+  language: "zh" | "en" | "ko",
 ): LongSpanFatigueIssue | null {
   if (cadence.titlePressure?.pressure !== "high") {
     return null;
@@ -276,10 +296,19 @@ function buildTitleIssue(
     };
   }
 
+  if (language === "ko") {
+    return {
+      severity: "warning",
+      category: "제목 반복",
+      description: `최근 제목이 "${repeatedToken}" 주변으로 반복되고 있습니다(현재 윈도우에서 ${count}회 등장). 제목이 공식화되고 있습니다.`,
+      suggestion: "다음 장 제목의 핵심어를 바꾸세요. 새로운 이미지, 행동, 결과, 또는 인물 초점을 사용하세요.",
+    };
+  }
+
   return {
     severity: "warning",
     category: "标题重复",
-    description: `最近标题持续围绕“${repeatedToken}”命名（当前窗口命中${count}次），命名开始坍缩。`,
+    description: `最近标题持续围绕"${repeatedToken}"命名（当前窗口命中${count}次），命名开始坍缩。`,
     suggestion: "下一章标题换一个新的意象、动作、后果或人物焦点，不要继续套同一个关键词壳。",
   };
 }
@@ -315,7 +344,7 @@ async function loadRecentChapterBodies(
 function buildSentencePatternIssue(
   chapterBodies: ReadonlyArray<string>,
   boundary: "opening" | "ending",
-  language: "zh" | "en",
+  language: "zh" | "en" | "ko",
 ): LongSpanFatigueIssue | null {
   if (chapterBodies.length < LONG_SPAN_FATIGUE_THRESHOLDS.boundaryPatternMinBodies) return null;
 
@@ -354,10 +383,21 @@ function buildSentencePatternIssue(
     };
   }
 
+  if (language === "ko") {
+    return {
+      severity: "warning",
+      category: boundary === "opening" ? "도입부 동형 반복" : "마무리 동형 반복",
+      description: `최근 3장의 ${boundary === "opening" ? "도입부" : "마무리"} 문형이 매우 유사합니다(인접 유사도 ${pairText}). 공식화된 ${boundary === "opening" ? "시작" : "끝맺음"}이 될 수 있습니다. 현재 문형: "${sample}".`,
+      suggestion: boundary === "opening"
+        ? "다음 장의 시작 방식을 바꾸세요. 행동, 결과, 또는 의외의 정보로 진입하세요."
+        : "다음 장의 마무리 패턴을 바꾸세요. 행동 결과, 인물 결단, 또는 새로운 변수로 마무리하세요.",
+    };
+  }
+
   return {
     severity: "warning",
     category: boundary === "opening" ? "开头同构" : "结尾同构",
-    description: `最近3章${boundary === "opening" ? "开头" : "结尾"}句式高度相似（相邻相似度${pairText}），容易形成模板化${boundary === "opening" ? "开篇" : "章尾"}。当前句式近似“${sample}”。`,
+    description: `最近3章${boundary === "opening" ? "开头" : "结尾"}句式高度相似（相邻相似度${pairText}），容易形成模板化${boundary === "opening" ? "开篇" : "章尾"}。当前句式近似"${sample}"。`,
     suggestion: boundary === "opening"
       ? "下一章换一个开篇入口，用动作、后果或异常信息切入，不要连续沿用同一种抬镜句。"
       : "下一章换一个收束方式，用行动后果、角色决断或新变量落板，不要连续用解释性句子收尾。",
@@ -447,7 +487,7 @@ function extractBoundarySentence(content: string, boundary: "opening" | "ending"
     .join(" ");
 
   const sentences = flattened
-    .split(/(?<=[。！？!?\.])\s+/)
+    .split(/(?<=[。！？!?.])\s*/)
     .map((sentence) => sentence.trim())
     .filter((sentence) => sentence.length > 0);
 
@@ -458,7 +498,7 @@ function extractBoundarySentence(content: string, boundary: "opening" | "ending"
   return boundary === "opening" ? sentences[0]! : sentences[sentences.length - 1]!;
 }
 
-function normalizeSentence(sentence: string, language: "zh" | "en"): string {
+function normalizeSentence(sentence: string, language: "zh" | "en" | "ko"): string {
   if (language === "en") {
     return sentence
       .toLowerCase()
@@ -466,12 +506,19 @@ function normalizeSentence(sentence: string, language: "zh" | "en"): string {
       .trim();
   }
 
+  if (language === "ko") {
+    return sentence
+      .replace(KOREAN_PUNCTUATION, "")
+      .replace(KOREAN_STOP_PARTICLES, "")
+      .toLowerCase();
+  }
+
   return sentence
     .replace(CHINESE_PUNCTUATION, "")
     .toLowerCase();
 }
 
-function summarizeSentence(sentence: string, language: "zh" | "en"): string {
+function summarizeSentence(sentence: string, language: "zh" | "en" | "ko"): string {
   if (language === "en") {
     const words = sentence
       .toLowerCase()
@@ -481,6 +528,11 @@ function summarizeSentence(sentence: string, language: "zh" | "en"): string {
       .slice(0, 6)
       .join(" ");
     return words.length > 0 ? words : sentence.slice(0, 32);
+  }
+
+  if (language === "ko") {
+    const collapsed = sentence.replace(/[.,!?;:'"()\s\-—…·]/g, "");
+    return collapsed.slice(0, 16);
   }
 
   const collapsed = sentence.replace(CHINESE_PUNCTUATION, "");

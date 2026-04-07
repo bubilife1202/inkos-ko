@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const PlatformSchema = z.enum(["tomato", "feilu", "qidian", "other"]);
+export const PlatformSchema = z.enum(["tomato", "feilu", "qidian", "novelpia", "kakaopage", "naver-series", "munpia", "other"]);
 export type Platform = z.infer<typeof PlatformSchema>;
 
 export const GenreSchema = z.string().min(1);
@@ -26,8 +26,10 @@ export const BookConfigSchema = z.object({
   genre: GenreSchema,
   status: BookStatusSchema,
   targetChapters: z.number().int().min(1).default(200),
+  // Default 3000 for zh; ko should use ~4500, en should use ~5000.
+  // Callers should override this default when language is known.
   chapterWordCount: z.number().int().min(1000).default(3000),
-  language: z.enum(["zh", "en"]).optional(),
+  language: z.enum(["zh", "en", "ko"]).optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   parentBookId: z.string().optional(),

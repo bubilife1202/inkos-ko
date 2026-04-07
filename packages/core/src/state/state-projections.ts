@@ -10,16 +10,16 @@ import {
 
 export function renderHooksProjection(
   state: HooksState,
-  language: "zh" | "en" = "zh",
+  language: "zh" | "en" | "ko" = "zh",
 ): string {
-  const title = language === "en" ? "# Pending Hooks" : "# 伏笔池";
-  const headers = language === "en"
+  const title = language === "zh" ? "# 伏笔池" : "# Pending Hooks";
+  const headers = language === "zh"
     ? [
-      "| hook_id | start_chapter | type | status | last_advanced_chapter | expected_payoff | payoff_timing | notes |",
+      "| hook_id | 起始章节 | 类型 | 状态 | 最近推进 | 预期回收 | 回收节奏 | 备注 |",
       "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     : [
-      "| hook_id | 起始章节 | 类型 | 状态 | 最近推进 | 预期回收 | 回收节奏 | 备注 |",
+      "| hook_id | start_chapter | type | status | last_advanced_chapter | expected_payoff | payoff_timing | notes |",
       "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ];
 
@@ -47,16 +47,16 @@ export function renderHooksProjection(
 
 export function renderChapterSummariesProjection(
   state: ChapterSummariesState,
-  language: "zh" | "en" = "zh",
+  language: "zh" | "en" | "ko" = "zh",
 ): string {
-  const title = language === "en" ? "# Chapter Summaries" : "# 章节摘要";
-  const headers = language === "en"
+  const title = language === "zh" ? "# 章节摘要" : "# Chapter Summaries";
+  const headers = language === "zh"
     ? [
-      "| Chapter | Title | Characters | Key Events | State Changes | Hook Activity | Mood | Chapter Type |",
+      "| 章节 | 标题 | 出场人物 | 关键事件 | 状态变化 | 伏笔动态 | 情绪基调 | 章节类型 |",
       "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     : [
-      "| 章节 | 标题 | 出场人物 | 关键事件 | 状态变化 | 伏笔动态 | 情绪基调 | 章节类型 |",
+      "| Chapter | Title | Characters | Key Events | State Changes | Hook Activity | Mood | Chapter Type |",
       "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ];
 
@@ -80,25 +80,10 @@ export function renderChapterSummariesProjection(
 
 export function renderCurrentStateProjection(
   state: CurrentStateState,
-  language: "zh" | "en" = "zh",
+  language: "zh" | "en" | "ko" = "zh",
 ): string {
-  const layout = language === "en"
+  const layout = language === "zh"
     ? {
-      title: "# Current State",
-      tableHeader: "| Field | Value |",
-      labels: {
-        chapter: "Current Chapter",
-        location: "Current Location",
-        protagonistState: "Protagonist State",
-        goal: "Current Goal",
-        constraint: "Current Constraint",
-        alliances: "Current Alliances",
-        conflict: "Current Conflict",
-      },
-      placeholders: "(not set)",
-      additionalTitle: "## Additional State",
-    }
-    : {
       title: "# 当前状态",
       tableHeader: "| 字段 | 值 |",
       labels: {
@@ -112,6 +97,21 @@ export function renderCurrentStateProjection(
       },
       placeholders: "（未设定）",
       additionalTitle: "## 其他状态",
+    }
+    : {
+      title: "# Current State",
+      tableHeader: "| Field | Value |",
+      labels: {
+        chapter: "Current Chapter",
+        location: "Current Location",
+        protagonistState: "Protagonist State",
+        goal: "Current Goal",
+        constraint: "Current Constraint",
+        alliances: "Current Alliances",
+        conflict: "Current Conflict",
+      },
+      placeholders: "(not set)",
+      additionalTitle: "## Additional State",
     };
 
   const slots = [

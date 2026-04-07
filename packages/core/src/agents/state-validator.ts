@@ -30,7 +30,7 @@ export class StateValidatorAgent extends BaseAgent {
     newState: string,
     oldHooks: string,
     newHooks: string,
-    language: "zh" | "en" = "zh",
+    language: "zh" | "en" | "ko" = "zh",
   ): Promise<ValidationResult> {
     const stateDiff = this.computeDiff(oldState, newState, "State Card");
     const hooksDiff = this.computeDiff(oldHooks, newHooks, "Hooks Pool");

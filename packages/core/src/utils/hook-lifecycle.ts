@@ -8,7 +8,7 @@ import {
   type HookPhase,
 } from "./hook-policy.js";
 
-const LABELS: Record<"zh" | "en", Record<HookPayoffTiming, string>> = {
+const LABELS: Record<"zh" | "en" | "ko", Record<HookPayoffTiming, string>> = {
   en: {
     immediate: "immediate",
     "near-term": "near-term",
@@ -22,6 +22,13 @@ const LABELS: Record<"zh" | "en", Record<HookPayoffTiming, string>> = {
     "mid-arc": "中程",
     "slow-burn": "慢烧",
     endgame: "终局",
+  },
+  ko: {
+    immediate: "즉시",
+    "near-term": "단기",
+    "mid-arc": "중기",
+    "slow-burn": "장기",
+    endgame: "종반",
   },
 };
 
@@ -87,7 +94,7 @@ export function resolveHookPayoffTiming(params: {
 
 export function localizeHookPayoffTiming(
   timing: HookPayoffTiming,
-  language: "zh" | "en",
+  language: "zh" | "en" | "ko",
 ): string {
   return LABELS[language][timing];
 }

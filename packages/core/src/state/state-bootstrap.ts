@@ -380,11 +380,13 @@ function parseCurrentStateStateMarkdown(
   });
 }
 
-async function resolveRuntimeLanguage(bookDir: string): Promise<"zh" | "en"> {
+async function resolveRuntimeLanguage(bookDir: string): Promise<"zh" | "en" | "ko"> {
   try {
     const raw = await readFile(join(bookDir, "book.json"), "utf-8");
     const parsed = JSON.parse(raw) as { language?: unknown };
-    return parsed.language === "zh" ? "zh" : "en";
+    if (parsed.language === "zh") return "zh";
+    if (parsed.language === "ko") return "ko";
+    return "en";
   } catch {
     return "en";
   }

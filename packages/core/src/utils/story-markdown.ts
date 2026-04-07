@@ -7,13 +7,18 @@ import {
 
 export function renderSummarySnapshot(
   summaries: ReadonlyArray<StoredSummary>,
-  language: "zh" | "en" = "zh",
+  language: "zh" | "en" | "ko" = "zh",
 ): string {
   if (summaries.length === 0) return "- none";
 
   const headers = language === "en"
     ? [
       "| chapter | title | characters | events | stateChanges | hookActivity | mood | chapterType |",
+      "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    : language === "ko"
+    ? [
+      "| 회차 | 제목 | 등장인물 | 핵심 사건 | 상태 변화 | 복선 동태 | 분위기 | 장 유형 |",
       "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     : [
@@ -38,13 +43,18 @@ export function renderSummarySnapshot(
 
 export function renderHookSnapshot(
   hooks: ReadonlyArray<StoredHook>,
-  language: "zh" | "en" = "zh",
+  language: "zh" | "en" | "ko" = "zh",
 ): string {
   if (hooks.length === 0) return "- none";
 
   const headers = language === "en"
     ? [
       "| hook_id | start_chapter | type | status | last_advanced | expected_payoff | payoff_timing | notes |",
+      "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    : language === "ko"
+    ? [
+      "| hook_id | 시작 회차 | 유형 | 상태 | 최근 진전 | 예상 회수 | 회수 리듬 | 비고 |",
       "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     : [
@@ -172,20 +182,20 @@ export function parseMarkdownTableRows(markdown: string): string[][] {
 export function isStateTableHeaderRow(row: ReadonlyArray<string>): boolean {
   const first = (row[0] ?? "").trim().toLowerCase();
   const second = (row[1] ?? "").trim().toLowerCase();
-  return (first === "字段" && second === "值") || (first === "field" && second === "value");
+  return (first === "字段" && second === "值") || (first === "field" && second === "value") || (first === "항목" && second === "값");
 }
 
 export function isCurrentChapterLabel(label: string): boolean {
-  return /^(当前章节|current chapter)$/i.test(label.trim());
+  return /^(当前章节|current chapter|현재 회차)$/i.test(label.trim());
 }
 
 export function inferFactSubject(label: string): string {
-  if (/^(当前位置|current location)$/i.test(label)) return "protagonist";
-  if (/^(主角状态|protagonist state)$/i.test(label)) return "protagonist";
-  if (/^(当前目标|current goal)$/i.test(label)) return "protagonist";
-  if (/^(当前限制|current constraint)$/i.test(label)) return "protagonist";
-  if (/^(当前敌我|current alliances|current relationships)$/i.test(label)) return "protagonist";
-  if (/^(当前冲突|current conflict)$/i.test(label)) return "protagonist";
+  if (/^(当前位置|current location|현재 위치)$/i.test(label)) return "protagonist";
+  if (/^(主角状态|protagonist state|주인공 상태)$/i.test(label)) return "protagonist";
+  if (/^(当前目标|current goal|현재 목표)$/i.test(label)) return "protagonist";
+  if (/^(当前限制|current constraint|현재 제약)$/i.test(label)) return "protagonist";
+  if (/^(当前敌我|current alliances|current relationships|현재 적아 관계)$/i.test(label)) return "protagonist";
+  if (/^(当前冲突|current conflict|현재 갈등)$/i.test(label)) return "protagonist";
   return "current_state";
 }
 

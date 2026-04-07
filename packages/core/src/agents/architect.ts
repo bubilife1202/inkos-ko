@@ -34,16 +34,19 @@ export class ArchitectAgent extends BaseAgent {
     const reviewFeedbackBlock = this.buildReviewFeedbackBlock(reviewFeedback, resolvedLanguage);
 
     const numericalBlock = gp.numericalSystem
-      ? `- 有明确的数值/资源体系可追踪
-- 在 book_rules 中定义 numericalSystemOverrides（hardCap、resourceTypes）`
-      : "- 本题材无数值系统，不需要资源账本";
+      ? (resolvedLanguage === "ko"
+        ? `- 명확한 수치/자원 체계 추적 가능\n- book_rules에 numericalSystemOverrides(hardCap, resourceTypes) 정의`
+        : `- 有明确的数值/资源体系可追踪\n- 在 book_rules 中定义 numericalSystemOverrides（hardCap、resourceTypes）`)
+      : (resolvedLanguage === "ko"
+        ? "- 본 장르는 수치 시스템 없음, 자원 장부 불필요"
+        : "- 本题材无数值系统，不需要资源账本");
 
     const powerBlock = gp.powerScaling
-      ? "- 有明确的战力等级体系"
+      ? (resolvedLanguage === "ko" ? "- 명확한 전투력 등급 체계 존재" : "- 有明确的战力等级体系")
       : "";
 
     const eraBlock = gp.eraResearch
-      ? "- 需要年代考据支撑（在 book_rules 中设置 eraConstraints）"
+      ? (resolvedLanguage === "ko" ? "- 시대 고증 필요 (book_rules에 eraConstraints 설정)" : "- 需要年代考据支撑（在 book_rules 中设置 eraConstraints）")
       : "";
 
     const storyBiblePrompt = resolvedLanguage === "en"
@@ -73,7 +76,37 @@ Blurb method (within 300 words, choose one):
 
 Core blurb principle:
 - The blurb is product copy that must make readers want to click`
-      : `用结构化二级标题组织：
+      : resolvedLanguage === "ko"
+        ? `구조화된 2차 제목으로 구성하세요:
+## 01_세계관
+세계관 설정, 핵심 규칙 체계
+
+## 02_주인공
+주인공 설정 (정체성/치트키/성격 기조/행동 경계)
+
+## 03_세력과_인물
+세력 분포, 주요 조연 (각각: 이름, 정체, 동기, 주인공과의 관계, 독립적 목표)
+- 한국식 호칭 체계 반영: 형/누나/오빠/언니·선배/후배 등 관계 기반 호칭
+
+## 04_지리와_환경
+지도/장면 설정, 환경 특색
+
+## 05_제목과_소개
+제목 방법론:
+- 제목은 간결하고 직관적이어야 하며, 독자가 보자마자 장르와 주제를 파악할 수 있어야 합니다
+- "장르+핵심 쾌감+주인공 행동" 형식의 제목 활용, 지나치게 문학적인 제목 지양
+- 플랫폼 트렌드 키워드를 반영하여 정확한 독자층 유입
+
+소개 방법론 (300자 이내, 세 가지 중 택일):
+1. 갈등 도입법: 첫 문장에 위기/갈등 제시, 두 번째 문장에 치트키/핵심 능력, 세 번째 문장에 서스펜스
+2. 핵심 요약법: 본선만 골라서 요약(전체 줄거리 아님), 반드시 서스펜스 유지
+3. 미니 시나리오법: 이야기에서 가장 매력적인 장면을 도입부로 활용
+
+소개 핵심 원칙:
+- 소개 = 상품 카피, 독자가 "클릭해서 읽고 싶다"는 충동을 느끼게 해야 합니다
+- 스토리 설정, 캐릭터, 또는 인상적인 장면에서 진입 가능
+- 반드시 훅이 있어야 합니다 (예: "노트에 적힌 이름의 주인은, 결국 모두 죽는다")`
+        : `用结构化二级标题组织：
 ## 01_世界观
 世界观设定、核心规则体系
 
@@ -111,7 +144,19 @@ Core blurb principle:
 - Chapter 1: throw the core conflict immediately; no large background dump
 - Chapter 2: show the core edge / ability / leverage that answers Chapter 1's pressure
 - Chapter 3: establish the first concrete short-term goal that gives readers a reason to continue`
-      : `卷纲规划，每卷包含：卷名、章节范围、核心冲突、关键转折、收益目标
+      : resolvedLanguage === "ko"
+        ? `볼륨 아웃라인 기획. 각 볼륨에 포함: 볼륨명, 회차 범위, 핵심 갈등, 주요 전환점, 수확 목표
+
+### 황금 3화 법칙 (첫 3화 필수 준수)
+- 1화: 핵심 갈등을 즉시 던질 것 (주인공이 곧바로 위기/선택에 직면), 장황한 배경 설명 금지
+- 2화: 치트키/핵심 능력 공개 (1화의 압박에 주인공이 어떻게 대응하는지), 독자에게 카타르시스 예고
+- 3화: 단기 목표 확립 (주인공의 첫 번째 구체적이고 달성 가능한 목표), 독자에게 다음 화 넘김 이유 제공
+
+### 한국 웹소설 회차 구성 원칙
+- 각 회차 끝에 클리프행어 배치 (다음 화 유입율 극대화)
+- 짧은 문단(1-2문장) 리듬으로 템포 설계
+- "~했다" 종결어미 반복 지양, 다양한 어미 활용`
+        : `卷纲规划，每卷包含：卷名、章节范围、核心冲突、关键转折、收益目标
 
 ### 黄金三章法则（前三章必须遵循）
 - 第1章：抛出核心冲突（主角立即面临困境/危机/选择），禁止大段背景灌输
@@ -147,7 +192,43 @@ enableFullCastTracking: false
 ## Core Conflict Driver
 (Describe the book's core conflict and propulsion)
 \`\`\``
-      : `生成 book_rules.md 格式的 YAML frontmatter + 叙事指导，包含：
+      : resolvedLanguage === "ko"
+        ? `book_rules.md를 YAML frontmatter + 서사 가이드 형식으로 생성하세요:
+\`\`\`
+---
+version: "1.0"
+protagonist:
+  name: (주인공 이름)
+  personalityLock: [(3-5개 성격 키워드)]
+  behavioralConstraints: [(3-5개 행동 제약)]
+genreLock:
+  primary: ${book.genre}
+  forbidden: [(2-3종 혼입 금지 문체)]
+${gp.numericalSystem ? `numericalSystemOverrides:
+  hardCap: (설정에 따라 결정)
+  resourceTypes: [(핵심 자원 유형 목록)]` : ""}
+prohibitions:
+  - (3-5개 본 작품 금기)
+chapterTypesOverride: []
+fatigueWordsOverride: []
+additionalAuditDimensions: []
+enableFullCastTracking: false
+---
+
+## 서사 시점
+(본 작품의 서사 시점과 문체를 기술하세요)
+- 존댓말/반말 기조 명시 (인물별 어미 체계)
+
+## 핵심 갈등 동력
+(본 작품의 핵심 모순과 추진력을 기술하세요)
+
+## 한국 웹소설 문체 규칙
+- 짧은 문단 (1-2문장) 리듬 유지
+- "~했다" 종결어미 반복 지양, 다양한 어미 활용 (-ㄴ다/-더라/-였다/-는데 등)
+- 클리프행어 기법: 각 회차 마지막에 서스펜스 배치
+- 호칭 체계: 형/누나/오빠/언니·선배/후배 등 관계 기반 호칭 자연스럽게 사용
+\`\`\``
+        : `生成 book_rules.md 格式的 YAML frontmatter + 叙事指导，包含：
 \`\`\`
 ---
 version: "1.0"
@@ -187,7 +268,18 @@ enableFullCastTracking: false
 | Current Constraint | (initial constraint) |
 | Current Alliances | (initial relationships) |
 | Current Conflict | (first conflict) |`
-      : `初始状态卡（第0章），包含：
+      : resolvedLanguage === "ko"
+        ? `초기 상태 카드 (0화), 포함:
+| 필드 | 값 |
+|------|-----|
+| 현재 회차 | 0 |
+| 현재 위치 | (시작 장소) |
+| 주인공 상태 | (초기 상태) |
+| 현재 목표 | (첫 번째 목표) |
+| 현재 제약 | (초기 제약) |
+| 현재 적아 관계 | (초기 관계) |
+| 현재 갈등 | (첫 번째 갈등) |`
+        : `初始状态卡（第0章），包含：
 | 字段 | 值 |
 |------|-----|
 | 当前章节 | 0 |
@@ -207,14 +299,23 @@ Rules for the hook table:
 - During book creation, all planned hooks are still unapplied, so last_advanced_chapter = 0
 - Column 7 must be one of: immediate / near-term / mid-arc / slow-burn / endgame
 - If you want to describe the initial clue/signal, put it in notes instead of column 5`
-      : `初始伏笔池（Markdown表格）：
+      : resolvedLanguage === "ko"
+        ? `초기 복선 풀 (Markdown 표):
+| hook_id | 시작 회차 | 유형 | 상태 | 최근 진전 | 예상 회수 | 회수 리듬 | 비고 |
+
+복선 표 규칙:
+- 5열은 반드시 순수 회차 번호여야 하며, 자연어 설명 불가
+- 작품 생성 단계에서 모든 복선은 아직 정식 진전이 없으므로 5열은 일괄 0
+- 7열은 반드시 다음 중 하나: immediate / near-term / mid-arc / slow-burn / endgame
+- "최초 단서/최초 신호"를 설명하려면 비고에 작성하고 5열에 쓰지 마세요`
+        : `初始伏笔池（Markdown表格）：
 | hook_id | 起始章节 | 类型 | 状态 | 最近推进 | 预期回收 | 回收节奏 | 备注 |
 
 伏笔表规则：
 - 第5列必须是纯数字章节号，不能写自然语言描述
 - 建书阶段所有伏笔都还没正式推进，所以第5列统一填 0
 - 第7列必须填写：立即 / 近期 / 中程 / 慢烧 / 终局 之一
-- 如果要说明“初始线索/最初信号”，写进备注，不要写进第5列`;
+- 如果要说明"初始线索/最初信号"，写进备注，不要写进第5列`;
 
     const finalRequirementsPrompt = resolvedLanguage === "en"
       ? `Generated content must:
@@ -226,7 +327,19 @@ ${eraBlock}
 3. Give the protagonist a clear personality and behavioral boundaries
 4. Keep hooks and payoffs coherent
 5. Make supporting characters independently motivated rather than pure tools`
-      : `生成内容必须：
+      : resolvedLanguage === "ko"
+        ? `생성된 콘텐츠 필수 요건:
+1. ${book.platform} 플랫폼 취향에 부합할 것
+2. ${gp.name} 장르 특성에 부합할 것
+${numericalBlock}
+${powerBlock}
+${eraBlock}
+3. 주인공 캐릭터가 선명하고 명확한 행동 경계를 가질 것
+4. 복선이 전후로 호응하며 미회수 복선을 남기지 않을 것
+5. 조연에게 독립적 동기를 부여하고 도구적 인물로 만들지 않을 것
+6. 존댓말/반말 체계가 인물 관계에 일관되게 설계될 것
+7. 한국식 호칭(형/누나/오빠/언니/선배/후배 등)이 자연스럽게 반영될 것`
+        : `生成内容必须：
 1. 符合${book.platform}平台口味
 2. 符合${gp.name}题材特征
 ${numericalBlock}
@@ -236,21 +349,37 @@ ${eraBlock}
 4. 伏笔前后呼应，不留悬空线
 5. 配角有独立动机，不是工具人`;
 
-    const systemPrompt = `你是一个专业的网络小说架构师。你的任务是为一本新的${gp.name}小说生成完整的基础设定。${contextBlock}${reviewFeedbackBlock}
+    const systemIntro = resolvedLanguage === "ko"
+      ? `당신은 전문 웹소설 아키텍트입니다. 새로운 ${gp.name} 소설의 완전한 기초 설정을 생성하는 것이 당신의 임무입니다.${contextBlock}${reviewFeedbackBlock}
+
+요건:
+- 플랫폼: ${book.platform}
+- 장르: ${gp.name} (${book.genre})
+- 목표 회차 수: ${book.targetChapters}화
+- 회차당 글자 수: ${book.chapterWordCount}자`
+      : `你是一个专业的网络小说架构师。你的任务是为一本新的${gp.name}小说生成完整的基础设定。${contextBlock}${reviewFeedbackBlock}
 
 要求：
 - 平台：${book.platform}
 - 题材：${gp.name}（${book.genre}）
 - 目标章数：${book.targetChapters}章
-- 每章字数：${book.chapterWordCount}字
+- 每章字数：${book.chapterWordCount}字`;
 
-## 题材特征
+    const genreHeader = resolvedLanguage === "ko" ? "## 장르 특성" : "## 题材特征";
+    const genReqHeader = resolvedLanguage === "ko" ? "## 생성 요건" : "## 生成要求";
+    const genReqDesc = resolvedLanguage === "ko"
+      ? "다음 내용을 생성하세요. 각 파트는 === SECTION: <name> === 으로 구분합니다:"
+      : "你需要生成以下内容，每个部分用 === SECTION: <name> === 分隔：";
+
+    const systemPrompt = `${systemIntro}
+
+${genreHeader}
 
 ${genreBody}
 
-## 生成要求
+${genReqHeader}
 
-你需要生成以下内容，每个部分用 === SECTION: <name> === 分隔：
+${genReqDesc}
 
 === SECTION: story_bible ===
 ${storyBiblePrompt}
@@ -271,10 +400,14 @@ ${finalRequirementsPrompt}`;
 
     const langPrefix = resolvedLanguage === "en"
       ? `【LANGUAGE OVERRIDE】ALL output (story_bible, volume_outline, book_rules, current_state, pending_hooks) MUST be written in English. Character names, place names, and all prose must be in English. The === SECTION: === tags remain unchanged.\n\n`
-      : "";
+      : resolvedLanguage === "ko"
+        ? `【언어 설정】모든 출력(story_bible, volume_outline, book_rules, current_state, pending_hooks)은 반드시 한국어로 작성하세요. 인물명, 지명, 모든 산문은 한국어로 작성합니다. === SECTION: === 태그는 그대로 유지합니다.\n\n`
+        : "";
     const userMessage = resolvedLanguage === "en"
       ? `Generate the complete foundation for a ${gp.name} novel titled "${book.title}". Write everything in English.`
-      : `请为标题为"${book.title}"的${gp.name}小说生成完整基础设定。`;
+      : resolvedLanguage === "ko"
+        ? `"${book.title}" 제목의 ${gp.name} 소설을 위한 완전한 기초 설정을 생성하세요.`
+        : `请为标题为"${book.title}"的${gp.name}小说生成完整基础设定。`;
 
     const response = await this.chat([
       { role: "system", content: langPrefix + systemPrompt },
@@ -288,7 +421,7 @@ ${finalRequirementsPrompt}`;
     bookDir: string,
     output: ArchitectOutput,
     numericalSystem: boolean = true,
-    language: "zh" | "en" = "zh",
+    language: "zh" | "en" | "ko" = "zh",
   ): Promise<void> {
     const storyDir = join(bookDir, "story");
     await mkdir(storyDir, { recursive: true });
@@ -302,40 +435,39 @@ ${finalRequirementsPrompt}`;
     ];
 
     if (numericalSystem) {
+      const ledgerContent = language === "en"
+        ? "# Resource Ledger\n\n| Chapter | Opening Value | Source | Integrity | Delta | Closing Value | Evidence |\n| --- | --- | --- | --- | --- | --- | --- |\n| 0 | 0 | Initialization | - | 0 | 0 | Initial book state |\n"
+        : language === "ko"
+          ? "# 자원 장부\n\n| 회차 | 기초값 | 출처 | 완전성 | 증감 | 기말값 | 근거 |\n|------|--------|------|--------|------|--------|------|\n| 0 | 0 | 초기화 | - | 0 | 0 | 작품 초기 상태 |\n"
+          : "# 资源账本\n\n| 章节 | 期初值 | 来源 | 完整度 | 增量 | 期末值 | 依据 |\n|------|--------|------|--------|------|--------|------|\n| 0 | 0 | 初始化 | - | 0 | 0 | 开书初始 |\n";
       writes.push(
-        writeFile(
-          join(storyDir, "particle_ledger.md"),
-          language === "en"
-            ? "# Resource Ledger\n\n| Chapter | Opening Value | Source | Integrity | Delta | Closing Value | Evidence |\n| --- | --- | --- | --- | --- | --- | --- |\n| 0 | 0 | Initialization | - | 0 | 0 | Initial book state |\n"
-            : "# 资源账本\n\n| 章节 | 期初值 | 来源 | 完整度 | 增量 | 期末值 | 依据 |\n|------|--------|------|--------|------|--------|------|\n| 0 | 0 | 初始化 | - | 0 | 0 | 开书初始 |\n",
-          "utf-8",
-        ),
+        writeFile(join(storyDir, "particle_ledger.md"), ledgerContent, "utf-8"),
       );
     }
 
     // Initialize new truth files
+    const subplotContent = language === "en"
+      ? "# Subplot Board\n\n| Subplot ID | Subplot | Related Characters | Start Chapter | Last Active Chapter | Chapters Since | Status | Progress Summary | Payoff ETA |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"
+      : language === "ko"
+        ? "# 서브플롯 진행판\n\n| 서브플롯 ID | 서브플롯명 | 관련 인물 | 시작 회차 | 최근 활성 회차 | 경과 회차 | 상태 | 진행 요약 | 회수 ETA |\n|------------|-----------|----------|----------|-------------|----------|------|---------|--------|\n"
+        : "# 支线进度板\n\n| 支线ID | 支线名 | 相关角色 | 起始章 | 最近活跃章 | 距今章数 | 状态 | 进度概述 | 回收ETA |\n|--------|--------|----------|--------|------------|----------|------|----------|---------|\n";
+
+    const emotionalContent = language === "en"
+      ? "# Emotional Arcs\n\n| Character | Chapter | Emotional State | Trigger Event | Intensity (1-10) | Arc Direction |\n| --- | --- | --- | --- | --- | --- |\n"
+      : language === "ko"
+        ? "# 감정선\n\n| 인물 | 회차 | 감정 상태 | 촉발 사건 | 강도(1-10) | 감정선 방향 |\n|------|------|----------|----------|-----------|----------|\n"
+        : "# 情感弧线\n\n| 角色 | 章节 | 情绪状态 | 触发事件 | 强度(1-10) | 弧线方向 |\n|------|------|----------|----------|------------|----------|\n";
+
+    const matrixContent = language === "en"
+      ? "# Character Matrix\n\n### Character Profiles\n| Character | Core Tags | Contrast Detail | Speech Style | Personality Core | Relationship to Protagonist | Core Motivation | Current Goal |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n\n### Encounter Log\n| Character A | Character B | First Meeting Chapter | Latest Interaction Chapter | Relationship Type | Relationship Change |\n| --- | --- | --- | --- | --- | --- |\n\n### Information Boundaries\n| Character | Known Information | Unknown Information | Source Chapter |\n| --- | --- | --- | --- |\n"
+      : language === "ko"
+        ? "# 인물 관계 매트릭스\n\n### 인물 프로필\n| 인물 | 핵심 태그 | 반전 디테일 | 말투 | 성격 기조 | 주인공과의 관계 | 핵심 동기 | 현재 목표 |\n|------|----------|-----------|------|----------|--------------|----------|----------|\n\n### 만남 기록\n| 인물A | 인물B | 첫 만남 회차 | 최근 상호작용 회차 | 관계 유형 | 관계 변화 |\n|-------|-------|-----------|----------------|----------|----------|\n\n### 정보 경계\n| 인물 | 인지 정보 | 미인지 정보 | 정보 출처 회차 |\n|------|----------|-----------|------------|\n"
+        : "# 角色交互矩阵\n\n### 角色档案\n| 角色 | 核心标签 | 反差细节 | 说话风格 | 性格底色 | 与主角关系 | 核心动机 | 当前目标 |\n|------|----------|----------|----------|----------|------------|----------|----------|\n\n### 相遇记录\n| 角色A | 角色B | 首次相遇章 | 最近交互章 | 关系性质 | 关系变化 |\n|-------|-------|------------|------------|----------|----------|\n\n### 信息边界\n| 角色 | 已知信息 | 未知信息 | 信息来源章 |\n|------|----------|----------|------------|\n";
+
     writes.push(
-      writeFile(
-        join(storyDir, "subplot_board.md"),
-        language === "en"
-          ? "# Subplot Board\n\n| Subplot ID | Subplot | Related Characters | Start Chapter | Last Active Chapter | Chapters Since | Status | Progress Summary | Payoff ETA |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"
-          : "# 支线进度板\n\n| 支线ID | 支线名 | 相关角色 | 起始章 | 最近活跃章 | 距今章数 | 状态 | 进度概述 | 回收ETA |\n|--------|--------|----------|--------|------------|----------|------|----------|---------|\n",
-        "utf-8",
-      ),
-      writeFile(
-        join(storyDir, "emotional_arcs.md"),
-        language === "en"
-          ? "# Emotional Arcs\n\n| Character | Chapter | Emotional State | Trigger Event | Intensity (1-10) | Arc Direction |\n| --- | --- | --- | --- | --- | --- |\n"
-          : "# 情感弧线\n\n| 角色 | 章节 | 情绪状态 | 触发事件 | 强度(1-10) | 弧线方向 |\n|------|------|----------|----------|------------|----------|\n",
-        "utf-8",
-      ),
-      writeFile(
-        join(storyDir, "character_matrix.md"),
-        language === "en"
-          ? "# Character Matrix\n\n### Character Profiles\n| Character | Core Tags | Contrast Detail | Speech Style | Personality Core | Relationship to Protagonist | Core Motivation | Current Goal |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n\n### Encounter Log\n| Character A | Character B | First Meeting Chapter | Latest Interaction Chapter | Relationship Type | Relationship Change |\n| --- | --- | --- | --- | --- | --- |\n\n### Information Boundaries\n| Character | Known Information | Unknown Information | Source Chapter |\n| --- | --- | --- | --- |\n"
-          : "# 角色交互矩阵\n\n### 角色档案\n| 角色 | 核心标签 | 反差细节 | 说话风格 | 性格底色 | 与主角关系 | 核心动机 | 当前目标 |\n|------|----------|----------|----------|----------|------------|----------|----------|\n\n### 相遇记录\n| 角色A | 角色B | 首次相遇章 | 最近交互章 | 关系性质 | 关系变化 |\n|-------|-------|------------|------------|----------|----------|\n\n### 信息边界\n| 角色 | 已知信息 | 未知信息 | 信息来源章 |\n|------|----------|----------|------------|\n",
-        "utf-8",
-      ),
+      writeFile(join(storyDir, "subplot_board.md"), subplotContent, "utf-8"),
+      writeFile(join(storyDir, "emotional_arcs.md"), emotionalContent, "utf-8"),
+      writeFile(join(storyDir, "character_matrix.md"), matrixContent, "utf-8"),
     );
 
     await Promise.all(writes);
@@ -361,27 +493,38 @@ ${finalRequirementsPrompt}`;
     const contextBlock = externalContext
       ? (resolvedLanguage === "en"
           ? `\n\n## External Instructions\n${externalContext}\n`
-          : `\n\n## 外部指令\n${externalContext}\n`)
+          : resolvedLanguage === "ko"
+            ? `\n\n## 외부 지시\n${externalContext}\n`
+            : `\n\n## 外部指令\n${externalContext}\n`)
       : "";
 
     const numericalBlock = gp.numericalSystem
       ? (resolvedLanguage === "en"
           ? `- The story uses a trackable numerical/resource system
 - Define numericalSystemOverrides in book_rules (hardCap, resourceTypes)`
-          : `- 有明确的数值/资源体系可追踪
+          : resolvedLanguage === "ko"
+            ? `- 추적 가능한 수치/자원 체계가 있습니다
+- book_rules에 numericalSystemOverrides (hardCap, resourceTypes)를 정의하세요`
+            : `- 有明确的数值/资源体系可追踪
 - 在 book_rules 中定义 numericalSystemOverrides（hardCap、resourceTypes）`)
       : (resolvedLanguage === "en"
           ? "- This genre has no explicit numerical system and does not need a resource ledger"
-          : "- 本题材无数值系统，不需要资源账本");
+          : resolvedLanguage === "ko"
+            ? "- 본 장르에는 명시적 수치 시스템이 없으며, 자원 장부가 필요 없습니다"
+            : "- 本题材无数值系统，不需要资源账本");
 
     const powerBlock = gp.powerScaling
-      ? (resolvedLanguage === "en" ? "- The story has an explicit power-scaling ladder" : "- 有明确的战力等级体系")
+      ? (resolvedLanguage === "en" ? "- The story has an explicit power-scaling ladder"
+        : resolvedLanguage === "ko" ? "- 명확한 전투력 등급 체계가 있습니다"
+          : "- 有明确的战力等级体系")
       : "";
 
     const eraBlock = gp.eraResearch
       ? (resolvedLanguage === "en"
           ? "- The story needs era/historical grounding (set eraConstraints in book_rules)"
-          : "- 需要年代考据支撑（在 book_rules 中设置 eraConstraints）")
+          : resolvedLanguage === "ko"
+            ? "- 시대/역사적 근거가 필요합니다 (book_rules에 eraConstraints 설정)"
+            : "- 需要年代考据支撑（在 book_rules 中设置 eraConstraints）")
       : "";
 
     const storyBiblePrompt = resolvedLanguage === "en"
@@ -400,7 +543,23 @@ Locations, environments, and scene traits drawn from the source text
 
 ## 05_Title_and_Blurb
 Keep the original title "${book.title}" and generate a matching blurb from the source text`
-      : `从正文中提取，用结构化二级标题组织：
+      : resolvedLanguage === "ko"
+        ? `본문에서 추출하여 구조화된 2차 제목으로 구성하세요:
+## 01_세계관
+본문에서 추출한 세계관 설정, 핵심 규칙 체계
+
+## 02_주인공
+본문에서 추론한 주인공 설정 (정체성/치트키/성격 기조/행동 경계)
+
+## 03_세력과_인물
+본문에 등장하는 세력 분포, 주요 조연 (각각: 이름, 정체, 동기, 주인공과의 관계, 독립적 목표)
+
+## 04_지리와_환경
+본문에 등장하는 지도/장면 설정, 환경 특색
+
+## 05_제목과_소개
+원래 제목 "${book.title}"을 유지하고, 본문 내용에 기반한 소개를 생성하세요`
+        : `从正文中提取，用结构化二级标题组织：
 ## 01_世界观
 从正文中提取的世界观设定、核心规则体系
 
@@ -421,7 +580,12 @@ Keep the original title "${book.title}" and generate a matching blurb from the s
 - Existing chapters: review the actual structure already present
 - Future projection: predict later directions from active hooks and plot momentum
 For each volume include: title, chapter range, core conflict, and key turning points`
-      : `基于已有正文反推卷纲：
+      : resolvedLanguage === "ko"
+        ? `기존 본문에서 볼륨 아웃라인을 역추론하세요:
+- 기존 회차: 실제 콘텐츠 기반으로 각 볼륨의 구조를 검토
+- 향후 예측: 활성 복선과 스토리 모멘텀을 기반으로 미래 방향 예측
+각 볼륨에 포함: 볼륨명, 회차 범위, 핵심 갈등, 주요 전환점`
+        : `基于已有正文反推卷纲：
 - 已有章节部分：根据实际内容回顾每卷的结构
 - 后续预测部分：基于已有伏笔和剧情走向预测未来方向
 每卷包含：卷名、章节范围、核心冲突、关键转折`;
@@ -455,7 +619,37 @@ enableFullCastTracking: false
 ## Core Conflict Driver
 (Infer the book's core conflict and propulsion from the text)
 \`\`\``
-      : `从正文中角色行为反推 book_rules.md 格式的 YAML frontmatter + 叙事指导：
+      : resolvedLanguage === "ko"
+        ? `본문의 인물 행동에서 book_rules.md를 YAML frontmatter + 서사 가이드 형식으로 역추론하세요:
+\`\`\`
+---
+version: "1.0"
+protagonist:
+  name: (본문에서 주인공 이름 추출)
+  personalityLock: [(행동에서 3-5개 성격 키워드 추론)]
+  behavioralConstraints: [(행동에서 3-5개 행동 제약 추론)]
+genreLock:
+  primary: ${book.genre}
+  forbidden: [(2-3종 혼입 금지 문체)]
+${gp.numericalSystem ? `numericalSystemOverrides:
+  hardCap: (본문에서 추론)
+  resourceTypes: [(본문에서 핵심 자원 유형 추출)]` : ""}
+prohibitions:
+  - (본문에서 3-5개 본 작품 금기 추론)
+chapterTypesOverride: []
+fatigueWordsOverride: []
+additionalAuditDimensions: []
+enableFullCastTracking: false
+---
+
+## 서사 시점
+(본문에서 서사 시점과 문체를 추론하세요)
+- 존댓말/반말 기조 명시 (인물별 어미 체계)
+
+## 핵심 갈등 동력
+(본문에서 핵심 모순과 추진력을 추론하세요)
+\`\`\``
+        : `从正文中角色行为反推 book_rules.md 格式的 YAML frontmatter + 叙事指导：
 \`\`\`
 ---
 version: "1.0"
@@ -495,7 +689,18 @@ enableFullCastTracking: false
 | Current Constraint | (current constraint) |
 | Current Alliances | (current alliances / opposition) |
 | Current Conflict | (current conflict) |`
-      : `反映最后一章结束时的状态卡：
+      : resolvedLanguage === "ko"
+        ? `마지막 회차 종료 시점의 상태를 반영하세요:
+| 필드 | 값 |
+|------|-----|
+| 현재 회차 | (마지막 회차 번호) |
+| 현재 위치 | (마지막 회차 종료 시 위치) |
+| 주인공 상태 | (마지막 회차 종료 시 상태) |
+| 현재 목표 | (현재 목표) |
+| 현재 제약 | (현재 제약) |
+| 현재 적아 관계 | (현재 적아 관계) |
+| 현재 갈등 | (현재 갈등) |`
+        : `反映最后一章结束时的状态卡：
 | 字段 | 值 |
 |------|-----|
 | 当前章节 | (最后一章章节号) |
@@ -509,7 +714,10 @@ enableFullCastTracking: false
     const pendingHooksPrompt = resolvedLanguage === "en"
       ? `Identify all active hooks from the source text (Markdown table):
 | hook_id | start_chapter | type | status | latest_progress | expected_payoff | payoff_timing | notes |`
-      : `从正文中识别的所有伏笔（Markdown表格）：
+      : resolvedLanguage === "ko"
+        ? `본문에서 모든 활성 복선을 식별하세요 (Markdown 표):
+| hook_id | 시작 회차 | 유형 | 상태 | 최근 진전 | 예상 회수 | 회수 리듬 | 비고 |`
+        : `从正文中识别的所有伏笔（Markdown表格）：
 | hook_id | 起始章节 | 类型 | 状态 | 最近推进 | 预期回收 | 回收节奏 | 备注 |`;
 
     const keyPrinciplesPrompt = resolvedLanguage === "en"
@@ -522,7 +730,17 @@ enableFullCastTracking: false
 ${numericalBlock}
 ${powerBlock}
 ${eraBlock}`
-      : `## 关键原则
+      : resolvedLanguage === "ko"
+        ? `## 핵심 원칙
+
+1. 모든 것을 본문에서 도출하세요. 본문에 없는 설정을 임의로 만들지 마세요
+2. 복선 식별은 완전해야 합니다: 미해결 단서, 암시, 예고 모두 포함
+3. 인물 추론은 대화와 행동에 기반해야 하며, 추측하지 마세요
+4. 정확성 우선, 핵심 정보를 누락하느니 상세하게 기록하세요
+${numericalBlock}
+${powerBlock}
+${eraBlock}`
+        : `## 关键原则
 
 1. 一切从正文出发，不要臆造正文中没有的设定
 2. 伏笔识别要完整：悬而未决的线索、暗示、预告都算
@@ -542,6 +760,15 @@ The continuation portion (chapters in volume_outline that have not happened yet)
 4. **No repeated meeting rooms**: If the imported chapters end on a meeting/discussion beat, the continuation must restart from action instead of opening another meeting`
       : `## Continuation Direction
 The volume_outline should naturally extend the existing narrative arc. Continue from where the imported chapters left off — advance existing conflicts, pay off planted hooks, and introduce new complications that arise organically from the current situation. Do not recap known information.`;
+    const continuationDirectiveKo = isSeries
+      ? `## 속편 방향 요건 (핵심)
+속편 부분(volume_outline에서 아직 발생하지 않은 회차)은 **새로운 서사 공간**을 설계해야 합니다:
+1. **새 갈등 차원**: 가져온 회차의 갈등을 단순히 늘리지 마세요. 원문이 다루지 않은 새 갈등 벡터를 최소 1개 도입하세요 (새 인물, 새 세력, 새 장소, 새 시간 범위)
+2. **5화 내 점화**: 속편 첫 볼륨은 5화 이내에 새 서스펜스 엔진을 구축해야 합니다. 기존 정보 요약에 3화를 쓰지 마세요
+3. **장면 신선도**: 속편 핵심 장면의 최소 50%는 가져온 회차에서 사용되지 않은 장소나 상황에서 발생해야 합니다
+4. **회의실 반복 금지**: 가져온 회차가 회의/토론으로 끝났다면, 속편은 행동으로 시작해야 하며 또 다른 회의를 열지 마세요`
+      : `## 속편 방향
+볼륨 아웃라인은 기존 서사를 자연스럽게 이어가야 합니다. 가져온 회차가 끝난 지점에서 이어가세요 — 기존 갈등을 진전시키고, 설치한 복선을 회수하고, 현재 상황에서 유기적으로 발생하는 새 변수를 도입하세요. 기존 정보를 다시 요약하지 마세요.`;
     const continuationDirectiveZh = isSeries
       ? `## 续写方向要求（关键）
 续写部分（volume_outline 中尚未发生的章节）必须设计**新的叙事空间**：
@@ -569,6 +796,23 @@ This is not a zero-to-one foundation pass. You must extract durable story truth 
 3. Infer protagonist lock, prohibitions, and narrative constraints from character behavior -> generate book_rules
 4. Reflect the latest chapter state -> generate current_state
 5. Extract all active hooks already planted in the text -> generate pending_hooks`;
+    const workingModeKo = isSeries
+      ? `## 작업 모드
+
+이것은 제로에서 만드는 것이 아니라, 기존 본문에서 추출하고 추론하여 **속편 방향을 설계**하는 작업입니다. 수행할 작업:
+1. 본문에서 세계관, 세력, 인물, 능력 체계를 추출 -> story_bible 생성
+2. 서사 구조에서 볼륨 아웃라인을 추론 -> volume_outline 생성 (기존 회차 검토 + **속편 부분의 새 방향 설계**)
+3. 인물 행동에서 주인공 잠금과 금기를 추론 -> book_rules 생성
+4. 최신 회차 상태에서 current_state 추론 (마지막 회차 종료 시점의 상태 반영)
+5. 본문에서 설치된 복선을 식별 -> pending_hooks 생성`
+      : `## 작업 모드
+
+이것은 제로에서 만드는 것이 아니라, 기존 본문에서 추출하고 추론하여 **자연스러운 이어쓰기를 위한 명확한 연속 경로를 유지**하는 작업입니다. 수행할 작업:
+1. 본문에서 세계관, 세력, 인물, 능력 체계를 추출 -> story_bible 생성
+2. 서사 구조에서 볼륨 아웃라인을 추론 -> volume_outline 생성 (기존 회차 검토 후 가져온 회차 종료 지점에서 자연스럽게 이어감)
+3. 인물 행동에서 주인공 잠금과 금기를 추론 -> book_rules 생성
+4. 최신 회차 상태에서 current_state 추론 (마지막 회차 종료 시점의 상태 반영)
+5. 본문에서 설치된 복선을 식별 -> pending_hooks 생성`;
     const workingModeZh = isSeries
       ? `## 工作模式
 
@@ -628,7 +872,48 @@ ${currentStatePrompt}
 ${pendingHooksPrompt}
 
 ${keyPrinciplesPrompt}`
-      : `你是一个专业的网络小说架构师。你的任务是从已有的小说正文中反向推导完整的基础设定。${contextBlock}
+      : resolvedLanguage === "ko"
+        ? `당신은 전문 웹소설 아키텍트입니다. 기존 회차에서 완전한 기초 설정을 역추론하는 것이 당신의 임무입니다.${contextBlock}
+
+${workingModeKo}
+
+모든 출력 섹션 — story_bible, volume_outline, book_rules, current_state, pending_hooks — 은 반드시 한국어로 작성하세요. === SECTION: === 태그는 그대로 유지합니다.
+
+${continuationDirectiveKo}
+${reviewFeedbackBlock}
+## 작품 정보
+
+- 제목: ${book.title}
+- 플랫폼: ${book.platform}
+- 장르: ${gp.name} (${book.genre})
+- 목표 회차 수: ${book.targetChapters}화
+- 회차당 글자 수: ${book.chapterWordCount}자
+
+## 장르 특성
+
+${genreBody}
+
+## 생성 요건
+
+다음 내용을 생성하세요. 각 파트는 === SECTION: <name> === 으로 구분합니다:
+
+=== SECTION: story_bible ===
+${storyBiblePrompt}
+
+=== SECTION: volume_outline ===
+${volumeOutlinePrompt}
+
+=== SECTION: book_rules ===
+${bookRulesPrompt}
+
+=== SECTION: current_state ===
+${currentStatePrompt}
+
+=== SECTION: pending_hooks ===
+${pendingHooksPrompt}
+
+${keyPrinciplesPrompt}`
+        : `你是一个专业的网络小说架构师。你的任务是从已有的小说正文中反向推导完整的基础设定。${contextBlock}
 
 ${workingModeZh}
 
@@ -668,7 +953,9 @@ ${pendingHooksPrompt}
 ${keyPrinciplesPrompt}`;
     const userMessage = resolvedLanguage === "en"
       ? `Generate the complete foundation for an imported ${gp.name} novel titled "${book.title}". Write everything in English.\n\n${chaptersText}`
-      : `以下是《${book.title}》的全部已有正文，请从中反向推导完整基础设定：\n\n${chaptersText}`;
+      : resolvedLanguage === "ko"
+        ? `다음은 "${book.title}"의 기존 전체 본문입니다. 여기서 완전한 기초 설정을 역추론하세요:\n\n${chaptersText}`
+        : `以下是《${book.title}》的全部已有正文，请从中反向推导完整基础设定：\n\n${chaptersText}`;
 
     const response = await this.chat([
       { role: "system", content: systemPrompt },
@@ -772,7 +1059,7 @@ prohibitions:
 
   private buildReviewFeedbackBlock(
     reviewFeedback: string | undefined,
-    language: "zh" | "en",
+    language: "zh" | "en" | "ko",
   ): string {
     const trimmed = reviewFeedback?.trim();
     if (!trimmed) return "";
@@ -780,6 +1067,13 @@ prohibitions:
     if (language === "en") {
       return `\n\n## Previous Review Feedback
 The previous foundation draft was rejected. You must explicitly fix the following issues in this regeneration instead of paraphrasing the same design:
+
+${trimmed}\n`;
+    }
+
+    if (language === "ko") {
+      return `\n\n## 이전 심사 피드백
+이전 기초 설정 초안이 반려되었습니다. 이번 재생성에서 다음 문제들을 명확히 수정해야 합니다. 같은 설계를 단순히 표현만 바꿔 다시 작성하지 마세요:
 
 ${trimmed}\n`;
     }
@@ -866,12 +1160,12 @@ ${trimmed}\n`;
       return section;
     }
 
-    const language: "zh" | "en" = /[\u4e00-\u9fff]/.test(section) ? "zh" : "en";
+    const language: "zh" | "en" | "ko" = /[\uAC00-\uD7AF]/.test(section) ? "ko" : /[\u4e00-\u9fff]/.test(section) ? "zh" : "en";
     const normalizedHooks = dataRows.map((row, index) => {
       const rawProgress = row[4] ?? "";
       const normalizedProgress = this.parseHookChapterNumber(rawProgress);
       const seedNote = normalizedProgress === 0 && this.hasNarrativeProgress(rawProgress)
-        ? (language === "zh" ? `初始线索：${rawProgress}` : `initial signal: ${rawProgress}`)
+        ? (language === "zh" ? `初始线索：${rawProgress}` : language === "ko" ? `초기 신호: ${rawProgress}` : `initial signal: ${rawProgress}`)
         : "";
       const notes = this.mergeHookNotes(row[6] ?? "", seedNote, language);
 
@@ -902,7 +1196,7 @@ ${trimmed}\n`;
     return !["0", "none", "n/a", "na", "-", "无", "未推进"].includes(normalized);
   }
 
-  private mergeHookNotes(notes: string, seedNote: string, language: "zh" | "en"): string {
+  private mergeHookNotes(notes: string, seedNote: string, language: "zh" | "en" | "ko"): string {
     const trimmedNotes = notes.trim();
     const trimmedSeed = seedNote.trim();
     if (!trimmedSeed) {
@@ -911,7 +1205,7 @@ ${trimmed}\n`;
     if (!trimmedNotes) {
       return trimmedSeed;
     }
-    return language === "zh"
+    return language === "zh" || language === "ko"
       ? `${trimmedNotes}（${trimmedSeed}）`
       : `${trimmedNotes} (${trimmedSeed})`;
   }

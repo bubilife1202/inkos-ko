@@ -1,6 +1,6 @@
 import type { LengthCountingMode, LengthNormalizeMode, LengthSpec } from "../models/length-governance.js";
 
-export type LengthLanguage = "zh" | "en";
+export type LengthLanguage = "zh" | "en" | "ko";
 
 const REFERENCE_TARGET = 2200;
 const SOFT_RANGE_DELTA = 300;
@@ -17,20 +17,29 @@ export function countChapterLength(
     return words?.length ?? 0;
   }
 
+  if (countingMode === "ko_chars") {
+    // 한국 웹소설은 공백 포함 글자수로 분량을 측정 (회당 4000~6000자)
+    return normalized.length;
+  }
+
   return normalized.replace(/\s+/g, "").length;
 }
 
 export function resolveLengthCountingMode(
   language: LengthLanguage = "zh",
 ): LengthCountingMode {
-  return language === "en" ? "en_words" : "zh_chars";
+  if (language === "en") return "en_words";
+  if (language === "ko") return "ko_chars";
+  return "zh_chars";
 }
 
 export function formatLengthCount(
   count: number,
   countingMode: LengthCountingMode,
 ): string {
-  return countingMode === "en_words" ? `${count} words` : `${count}字`;
+  if (countingMode === "en_words") return `${count} words`;
+  if (countingMode === "ko_chars") return `${count}자`;
+  return `${count}字`;
 }
 
 export function buildLengthSpec(
