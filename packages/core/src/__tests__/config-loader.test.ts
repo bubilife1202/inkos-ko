@@ -58,7 +58,7 @@ describe("loadProjectConfig local provider auth", () => {
     expect(config.llm.apiKey).toBe("");
   });
 
-  it("still requires API keys for remote hosted endpoints", async () => {
+  it("allows missing API keys for remote hosted endpoints when using CLI-backed providers", async () => {
     root = await mkdtemp(join(tmpdir(), "inkos-config-loader-remote-"));
     for (const key of ENV_KEYS) {
       previousEnv.set(key, process.env[key]);
@@ -75,6 +75,9 @@ describe("loadProjectConfig local provider auth", () => {
       },
     }, null, 2), "utf-8");
     await writeFile(join(root, ".env"), "", "utf-8");
-    await expect(loadProjectConfig(root)).rejects.toThrow(/INKOS_LLM_API_KEY not set/i);
+
+    const config = await loadProjectConfig(root);
+    expect(config.llm.model).toBe("gpt-5.4");
+    expect(config.llm.apiKey).toBe("");
   });
 });

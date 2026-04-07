@@ -35,15 +35,15 @@ export abstract class BaseAgent {
 
   /**
    * Chat with web search enabled.
-   * OpenAI: uses native web_search_options / web_search_preview.
-   * Other providers: searches via Tavily API (TAVILY_API_KEY), injects results into prompt.
+   * CLI-backed transports do not expose native provider search here,
+   * so search is injected via Tavily when available.
    */
   protected async chatWithSearch(
     messages: ReadonlyArray<LLMMessage>,
     options?: { readonly temperature?: number; readonly maxTokens?: number },
   ): Promise<LLMResponse> {
-    // OpenAI has native search — use it directly
-    if (this.ctx.client.provider === "openai") {
+    // CLI-backed transports do not expose provider-native search through this interface.
+    if (this.ctx.client.supportsNativeWebSearch) {
       return chatCompletion(this.ctx.client, this.ctx.model, messages, {
         ...options,
         webSearch: true,
